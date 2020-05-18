@@ -2125,6 +2125,9 @@ class EIS_exp:
         elif circuit == 'L-R-RQ-RQ-RQ':
             for i in range(len(self.df)):
                 self.circuit_fit.append(cir_LRsRQRQRQ_fit(params=self.Fit[i].params, w=self.df[i].w))
+        elif circuit == 'L-R-Q(R)-Q(R-Q(R))-Q(R)':
+            for i in range(len(self.df)):
+                self.circuit_fit.append(cir_LRQRQRQRQR_fit(params=self.Fit[i].params, w=self.df[i].w))
         elif circuit == 'R-RC-C':
             self.fit_Rs = []
             self.fit_R1 = []
@@ -3404,7 +3407,7 @@ class EIS_sim:
         elif circuit == 'L-R-RQ-RQ-RQ':
             self.circuit_fit = cir_LRsRQRQRQ_fit(params=self.Fit.params, w=self.w)
         elif circuit == 'R-RC-C':
-            self.circuit_fit = cir_RsRCC(w=self.df[i].w, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, C1=self.Fit.params.get('C1').value, C=self.Fit.params.get('C').value)
+            self.circuit_fit = cir_RsRCC(w=self.w, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, C1=self.Fit.params.get('C1').value, C=self.Fit.params.get('C').value)
             self.fit_Rs = []
             self.fit_Rs.append(self.Fit.params.get('Rs').value)
             self.fit_R1 = []

@@ -7,24 +7,25 @@ from scipy.constants import codata
 F = codata.physical_constants['Faraday constant'][0]
 Rg = codata.physical_constants['molar gas constant'][0]
 
+
 def sinh(x):
-    '''
+    """
     As numpy gives errors when sinh becomes very large, above 10^250, this functions is used
     instead of np/mp.sinh()
-    '''
+    """
     return (1 - np.exp(-2*x))/(2*np.exp(-x))
 
 
 def coth(x):
-    '''
+    """
     As numpy gives errors when coth becomes very large, above 10^250, this functions is used
     instead of np/mp.coth()
-    '''
+    """
     return (1 + np.exp(-2*x))/(1 - np.exp(-2*x))
 
 
 def elem_L(w, L):
-    '''
+    """
     Simulation Function: -L-
     Returns the impedance of an inductor
 
@@ -34,24 +35,24 @@ def elem_L(w, L):
     ----------
     w = Angular frequency [1/s]
     L = Inductance [ohm * s]
-    '''
+    """
     return 1j*w*L
 
 
 def elem_C(w,C):
-    '''
+    """
     Simulation Function: -C-
 
     Inputs
     ----------
     w = Angular frequency [1/s]
     C = Capacitance [F]
-    '''
+    """
     return 1/(C*(w*1j))
 
 
 def elem_Q(w,Q,n):
-    '''
+    """
     Simulation Function: -Q-
 
     Inputs
@@ -59,12 +60,12 @@ def elem_Q(w,Q,n):
     w = Angular frequency [1/s]
     Q = Constant phase element [s^n/ohm]
     n = Constant phase elelment exponent [-]
-    '''
+    """
     return 1/(Q*(w*1j)**n)
 
 
 def cir_RsC(w, Rs, C):
-    '''
+    """
     Simulation Function: -Rs-C-
 
     Inputs
@@ -72,12 +73,12 @@ def cir_RsC(w, Rs, C):
     w = Angular frequency [1/s]
     Rs = Series resistance [Ohm]
     C = Capacitance [F]
-    '''
+    """
     return Rs + 1/(C*(w*1j))
 
 
 def cir_RsQ(w, Rs, Q, n):
-    '''
+    """
     Simulation Function: -Rs-Q-
 
     Inputs
@@ -86,12 +87,13 @@ def cir_RsQ(w, Rs, Q, n):
     Rs = Series resistance [Ohm]
     Q = Constant phase element [s^n/ohm]
     n = Constant phase elelment exponent [-]
-    '''
+    """
     return Rs + 1/(Q*(w*1j)**n)
 
 
-def cir_RQ(w, R='none', Q='none', n='none', fs='none'):
-    '''
+def cir_RQ(w, R: Optional[float] = None, Q: Optional[float] = None,
+           n: Optional[float] = None, fs: Optional[float] = None):
+    """
     Simulation Function: -RQ-
     Return the impedance of an Rs-RQ circuit. See details for RQ under cir_RQ_fit()
 
@@ -104,18 +106,18 @@ def cir_RQ(w, R='none', Q='none', n='none', fs='none'):
     Q = Constant phase element [s^n/ohm]
     n = Constant phase elelment exponent [-]
     fs = Summit frequency of RQ circuit [Hz]
-    '''
-    if R == 'none':
+    """
+    if R is None:
         R = (1/(Q*(2*np.pi*fs)**n))
-    elif Q == 'none':
+    elif Q is None:
         Q = (1/(R*(2*np.pi*fs)**n))
-    elif n == 'none':
+    elif n is None:
         n = np.log(Q*R)/np.log(1/(2*np.pi*fs))
-    return (R/(1+R*Q*(w*1j)**n))
+    return R / (1+R*Q*(w*1j)**n)
 
 
 def cir_RsRQ(w, Rs='none', R='none', Q='none', n='none', fs='none'):
-    '''
+    """
     Simulation Function: -Rs-RQ-
     Return the impedance of an Rs-RQ circuit. See details for RQ under cir_RQ_fit()
 
@@ -129,7 +131,7 @@ def cir_RsRQ(w, Rs='none', R='none', Q='none', n='none', fs='none'):
     Q = Constant phase element [s^n/ohm]
     n = Constant phase elelment exponent [-]
     fs = Summit frequency of RQ circuit [Hz]
-    '''
+    """
     if R == 'none':
         R = (1/(Q*(2*np.pi*fs)**n))
     elif Q == 'none':
@@ -140,7 +142,7 @@ def cir_RsRQ(w, Rs='none', R='none', Q='none', n='none', fs='none'):
 
 
 def cir_RC(w, C='none', R='none', fs='none'):
-    '''
+    """
     Simulation Function: -RC-
     Returns the impedance of an RC circuit, using RQ definations where n=1. see cir_RQ() for details
 
@@ -152,12 +154,12 @@ def cir_RC(w, C='none', R='none', fs='none'):
     R = Resistance [Ohm]
     C = Capacitance [F]
     fs = Summit frequency of RC circuit [Hz]
-    '''
+    """
     return cir_RQ(w, R=R, Q=C, n=1, fs=fs)
 
 
 def cir_RsRQRQ(w, Rs, R='none', Q='none', n='none', fs='none', R2='none', Q2='none', n2='none', fs2='none'):
-    '''
+    """
     Simulation Function: -Rs-RQ-RQ-
     Return the impedance of an Rs-RQ circuit. See details for RQ under cir_RQ_fit()
 
@@ -177,7 +179,7 @@ def cir_RsRQRQ(w, Rs, R='none', Q='none', n='none', fs='none', R2='none', Q2='no
     Q2 = Constant phase element [s^n/ohm]
     n2 = Constant phase element exponent [-]
     fs2 = Summit frequency of RQ circuit [Hz]
-    '''
+    """
     if R == 'none':
         R = (1/(Q*(2*np.pi*fs)**n))
     elif Q == 'none':
@@ -195,6 +197,7 @@ def cir_RsRQRQ(w, Rs, R='none', Q='none', n='none', fs='none', R2='none', Q2='no
     return Rs + (R/(1+R*Q*(w*1j)**n)) + (R2/(1+R2*Q2*(w*1j)**n2))
 
 
+# L-Rs-RQ-RQ-RQ
 def cir_LRsRQRQRQ(w, Rs, L,
                   R1: Optional[float] = None, Q1: Optional[float] = None,
                   n1: Optional[float] = None, fs1: Optional[float] = None,
@@ -202,7 +205,7 @@ def cir_LRsRQRQRQ(w, Rs, L,
                   n2: Optional[float] = None, fs2: Optional[float] = None,
                   R3: Optional[float] = None, Q3: Optional[float] = None,
                   n3: Optional[float] = None, fs3: Optional[float] = None,):
-    '''
+    """
     Simulation Function: L-Rs-RQ-RQ-RQ
 
 
@@ -226,45 +229,46 @@ def cir_LRsRQRQRQ(w, Rs, L,
     Q3 = Constant phase element [s^n/ohm]
     n3 = Constant phase element exponent [-]
     fs3 = Summit frequency of RQ circuit [Hz]
-    '''
-    if R1 is None:
-        R1 = (1/(Q1*(2*np.pi*fs1)**n1))
-    elif Q1 is None:
-        Q1 = (1/(R1*(2*np.pi*fs1)**n1))
-    elif n1 is None:
-        n1 = np.log(Q1*R1)/np.log(1/(2*np.pi*fs1))
-
-    if R2 is None:
-        R2 = (1/(Q2*(2*np.pi*fs2)**n2))
-    elif Q2 is None:
-        Q2 = (1/(R2*(2*np.pi*fs2)**n2))
-    elif n2 is None:
-        n2 = np.log(Q2*R2)/np.log(1/(2*np.pi*fs2))
-
-    if R3 is None:
-        R3 = (1/(Q3*(2*np.pi*fs3)**n3))
-    elif Q3 is None:
-        Q3 = (1/(R3*(2*np.pi*fs3)**n3))
-    elif n3 is None:
-        n3 = np.log(Q3*R3)/np.log(1/(2*np.pi*fs3))
-
-    return elem_L(w, L) + Rs + (R1/(1+R1*Q1*(w*1j)**n1)) + \
-                               (R2/(1+R2*Q2*(w*1j)**n2)) + \
-                               (R3/(1+R3*Q3*(w*1j)**n3))
+    """
+    return elem_L(w, L) + Rs + cir_RQ(w, R1, Q1, n1, fs1) + \
+                               cir_RQ(w, R2, Q2, n2, fs2) + \
+                               cir_RQ(w, R3, Q3, n3, fs3)
 
 
 def cir_LRsRQRQRQ_fit(params, w):
     return cir_LRsRQRQRQ(w, params['Rs'], params['L'],
                          R1=params.get('R1'), Q1=params.get('Q1'),
                          n1=params.get('n1'), fs1=params.get('fs1'),
-                         R2=params.get('R1'), Q2=params.get('Q1'),
-                         n2=params.get('n1'), fs2=params.get('fs1'),
-                         R3=params.get('R1'), Q3=params.get('Q1'),
-                         n3=params.get('n1'), fs3=params.get('fs1'),)
+                         R2=params.get('R2'), Q2=params.get('Q2'),
+                         n2=params.get('n2'), fs2=params.get('fs2'),
+                         R3=params.get('R3'), Q3=params.get('Q3'),
+                         n3=params.get('n3'), fs3=params.get('fs3'))
+
+
+#  L-R-Q(R)-Q(R-Q(R))-Q(R)
+def cir_LRQRQRQRQR(w, R, L,
+                   R1=None, Q1=None, n1=None, fs1=None,
+                   R2=None, Q2=None, n2=None,
+                   R3=None, Q3=None, n3=None, fs3=None,
+                   R4=None, Q4=None, n4=None, fs4=None):
+    mid_element = (1/elem_Q(w, Q2, n2) + 1/(R2 + cir_RQ(w, R3, Q3, n3, fs3)))**-1
+    return elem_L(w, L) + R + cir_RQ(w, R1, Q1, n1, fs1) + mid_element + cir_RQ(w, R4, Q4, n4, fs4)
+
+
+def cir_LRQRQRQRQR_fit(params, w):
+    return cir_LRQRQRQRQR(w, params['R'], params['L'],
+                          R1=params.get('R1'), Q1=params.get('Q1'),
+                          n1=params.get('n1'), fs1=params.get('fs1'),
+                          R2=params.get('R2'), Q2=params.get('Q2'),
+                          n2=params.get('n2'),
+                          R3=params.get('R3'), Q3=params.get('Q3'),
+                          n3=params.get('n3'), fs3=params.get('fs3'),
+                          R4=params.get('R4'), Q4=params.get('Q4'),
+                          n4=params.get('n4'), fs4=params.get('fs4'))
 
 
 def cir_RsRQQ(w, Rs, Q, n, R1='none', Q1='none', n1='none', fs1='none'):
-    '''
+    """
     Simulation Function: -Rs-RQ-Q-
 
     Inputs
@@ -279,12 +283,12 @@ def cir_RsRQQ(w, Rs, Q, n, R1='none', Q1='none', n1='none', fs1='none'):
 
     Q = Constant phase element of series Q [s^n/ohm]
     n = Constant phase elelment exponent of series Q [-]
-    '''
+    """
     return Rs + cir_RQ(w, R=R1, Q=Q1, n=n1, fs=fs1) + elem_Q(w,Q,n)
 
 
 def cir_RsRQC(w, Rs, C, R1='none', Q1='none', n1='none', fs1='none'):
-    '''
+    """
     Simulation Function: -Rs-RQ-C-
 
     Inputs
@@ -298,12 +302,12 @@ def cir_RsRQC(w, Rs, C, R1='none', Q1='none', n1='none', fs1='none'):
     fs1 = summit frequency of RQ circuit [Hz]
 
     C = Constant phase element of series Q [s^n/ohm]
-    '''
+    """
     return Rs + cir_RQ(w, R=R1, Q=Q1, n=n1, fs=fs1) + elem_C(w, C=C)
 
 
 def cir_RsRCC(w, Rs, R1, C1, C):
-    '''
+    """
     Simulation Function: -Rs-RC-C-
 
     Inputs
@@ -315,12 +319,12 @@ def cir_RsRCC(w, Rs, R1, C1, C):
     C1 = Constant phase element in (RQ) circuit [s^n/ohm]
 
     C = Capacitance of series C [s^n/ohm]
-    '''
+    """
     return Rs + cir_RC(w, C=C1, R=R1, fs='none') + elem_C(w, C=C)
 
 
 def cir_RsRCQ(w, Rs, R1, C1, Q, n):
-    '''
+    """
     Simulation Function: -Rs-RC-Q-
 
     Inputs
@@ -333,12 +337,12 @@ def cir_RsRCQ(w, Rs, R1, C1, Q, n):
 
     Q = Constant phase element of series Q [s^n/ohm]
     n = Constant phase elelment exponent of series Q [-]
-    '''
+    """
     return Rs + cir_RC(w, C=C1, R=R1, fs='none') + elem_Q(w,Q,n)
 
 
 def Randles_coeff(w, n_electron, A, E='none', E0='none', D_red='none', D_ox='none', C_red='none', C_ox='none', Rg=Rg, F=F, T=298.15):
-    '''
+    """
     Returns the Randles coefficient sigma [ohm/s^1/2].
     Two cases: a) ox and red are both present in solution here both Cred and Dred are defined, b) In the particular case where initially
     only Ox species are present in the solution with bulk concentration C*_ox, the surface concentrations may be calculated as function
@@ -369,7 +373,7 @@ def Randles_coeff(w, n_electron, A, E='none', E0='none', D_red='none', D_ox='non
     Returns
     ----------
     Randles coefficient [ohm/s^1/2]
-    '''
+    """
     if C_red != 'none' and D_red != 'none':
         sigma = ((Rg*T) / ((n_electron**2) * A * (F**2) * (2**(1/2)))) * ((1/(D_ox**(1/2) * C_ox)) + (1/(D_red**(1/2) * C_red)))
     elif C_red == 'none' and D_red == 'none' and E!='none' and E0!= 'none':
@@ -384,7 +388,7 @@ def Randles_coeff(w, n_electron, A, E='none', E0='none', D_red='none', D_ox='non
 
 
 def cir_Randles(w, n_electron, D_red, D_ox, C_red, C_ox, Rs, Rct, n, E, A, Q='none', fs='none', E0=0, F=F, Rg=Rg, T=298.15):
-    '''
+    """
     Simulation Function: Randles -Rs-(Q-(RW)-)-
     Return the impedance of a Randles circuit with full complity of the warbug constant
     NOTE: This Randles circuit is only meant for semi-infinate linear diffusion
@@ -416,7 +420,7 @@ def cir_Randles(w, n_electron, D_red, D_ox, C_red, C_ox, Rs, Rct, n, E, A, Q='no
     Returns
     ----------
     The real and imaginary impedance of a Randles circuit [ohm]
-    '''
+    """
     Z_Rct = Rct
     Z_Q = elem_Q(w,Q,n)
     Z_w = Randles_coeff(w, n_electron=n_electron, E=E, E0=E0, D_red=D_red, D_ox=D_ox, C_red=C_red, C_ox=C_ox, A=A, T=T, Rg=Rg, F=F)
@@ -424,14 +428,14 @@ def cir_Randles(w, n_electron, D_red, D_ox, C_red, C_ox, Rs, Rct, n, E, A, Q='no
 
 
 def cir_Randles_simplified(w, Rs, R, n, sigma, Q='none', fs='none'):
-    '''
+    """
     Simulation Function: Randles -Rs-(Q-(RW)-)-
     Return the impedance of a Randles circuit with a simplified
 
     NOTE: This Randles circuit is only meant for semi-infinate linear diffusion
 
     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    '''
+    """
     if R == 'none':
         R = (1/(Q*(2*np.pi*fs)**n))
     elif Q == 'none':
@@ -447,7 +451,7 @@ def cir_Randles_simplified(w, Rs, R, n, sigma, Q='none', fs='none'):
 
 
 def cir_C_RC_C(w, Ce, Cb='none', Rb='none', fsb='none'):
-    '''
+    """
     Simulation Function: -C-(RC)-C-
 
     This circuit is often used for modeling blocking electrodes with a polymeric electrolyte, which
@@ -467,14 +471,14 @@ def cir_C_RC_C(w, Ce, Cb='none', Rb='none', fsb='none'):
     Rb = Bulk/series resistance [Ohm]
     Cb = Bulk capacitance [F]
     fsb = summit frequency of bulk (RC) circuit [Hz]
-    '''
+    """
     Z_C = elem_C(w,C=Ce)
     Z_RC = cir_RC(w, C=Cb, R=Rb, fs=fsb)
     return Z_C + Z_RC
 
 
 def cir_Q_RQ_Q(w, Qe, ne, Qb='none', Rb='none', fsb='none', nb='none'):
-    '''
+    """
     Simulation Function: -Q-(RQ)-Q-
 
     Modified cir_C_RC_C() circuits that can be used if electrodes and bulk are not behaving like
@@ -492,21 +496,21 @@ def cir_Q_RQ_Q(w, Qe, ne, Qb='none', Rb='none', fsb='none', nb='none'):
     Qb = Bulk capacitance modeled with a CPE [s^n/ohm]
     nb = Bulk constant phase element exponent [-]
     fsb = summit frequency of bulk (RQ) circuit [Hz]
-    '''
+    """
     Z_Q = elem_Q(w,Q=Qe,n=ne)
     Z_RQ = cir_RQ(w, Q=Qb, R=Rb, fs=fsb, n=nb)
     return Z_Q + Z_RQ
 
 
 def tanh(x):
-    '''
+    """
     As numpy gives errors when tanh becomes very large, above 10^250, this functions is used for np.tanh
-    '''
+    """
     return (1-np.exp(-2*x))/(1+np.exp(-2*x))
 
 
 def cir_RCRCZD(w, L, D_s, u1, u2, Cb='none', Rb='none', fsb='none', Ce='none', Re='none', fse='none'):
-    '''
+    """
     Simulation Function: -RC_b-RC_e-Z_D
 
     This circuit has been used to study non-blocking electrodes with an ioniocally conducting
@@ -540,7 +544,7 @@ def cir_RCRCZD(w, L, D_s, u1, u2, Cb='none', Rb='none', fsb='none', Ce='none', R
     Rb = Bulk/series resistance [Ohm]
     Cb = Bulk capacitance [F]
     fsb = Summit frequency of the bulk (RC) circuit [Hz]
-    '''
+    """
     Z_RCb = cir_RC(w, C=Cb, R=Rb, fs=fsb)
     Z_RCe = cir_RC(w, C=Ce, R=Re, fs=fse)
     alpha = ((w*1j*L**2)/D_s)**(1/2)
@@ -549,7 +553,7 @@ def cir_RCRCZD(w, L, D_s, u1, u2, Cb='none', Rb='none', fsb='none', Ce='none', R
 
 
 def cir_RsTLsQ(w, Rs, L, Ri, Q='none', n='none'):
-    '''
+    """
     Simulation Function: -Rs-TLsQ-
     TLs = Simplified Transmission Line, with a non-faradaic interfacial impedance (Q)
 
@@ -574,7 +578,7 @@ def cir_RsTLsQ(w, Rs, L, Ri, Q='none', n='none'):
     Ri = Ionic resistance inside of flodded pores [ohm/cm]
     Q = Interfacial capacitance of non-faradaic interface [F/cm]
     n = exponent for the interfacial capacitance [-]
-    '''
+    """
     Phi = 1/(Q*(w*1j)**n)
     X1 = Ri # ohm/cm
     Lam = (Phi/X1)**(1/2) #np.sqrt(Phi/X1)
@@ -591,7 +595,7 @@ def cir_RsTLsQ(w, Rs, L, Ri, Q='none', n='none'):
 
 
 def cir_RsRQTLsQ(w, Rs, R1, fs1, n1, L, Ri, Q, n, Q1='none'):
-    '''
+    """
     Simulation Function: -Rs-RQ-TLsQ-
     TLs = Simplified Transmission Line, with a non-faradaic interfacial impedance(Q)
 
@@ -625,7 +629,7 @@ def cir_RsRQTLsQ(w, Rs, R1, fs1, n1, L, Ri, Q, n, Q1='none'):
     Output
     -----------
     Impdance of Rs-(RQ)1-TLsQ
-    '''
+    """
     Z_RQ = cir_RQ(w=w, R=R1, Q=Q1, n=n1, fs=fs1)
 
     Phi = 1/(Q*(w*1j)**n)
@@ -644,7 +648,7 @@ def cir_RsRQTLsQ(w, Rs, R1, fs1, n1, L, Ri, Q, n, Q1='none'):
 
 
 def cir_RsTLs(w, Rs, L, Ri, R='none', Q='none', n='none', fs='none'):
-    '''
+    """
     Simulation Function: -Rs-TLs-
     TLs = Simplified Transmission Line, with a faradaic interfacial impedance (RQ)
 
@@ -675,7 +679,7 @@ def cir_RsTLs(w, Rs, L, Ri, R='none', Q='none', n='none', fs='none'):
     Output
     -----------
     Impedance of Rs-TLs(RQ)
-    '''
+    """
     Phi = cir_RQ(w, R, Q, n, fs)
     X1 = Ri
     Lam = (Phi/X1)**(1/2)
@@ -692,7 +696,7 @@ def cir_RsTLs(w, Rs, L, Ri, R='none', Q='none', n='none', fs='none'):
 
 
 def cir_RsRQTLs(w, Rs, L, Ri, R1, n1, fs1, R2, n2, fs2, Q1='none', Q2='none'):
-    '''
+    """
     Simulation Function: -Rs-RQ-TLs-
     TLs = Simplified Transmission Line, with a faradaic interfacial impedance (RQ)
 
@@ -725,7 +729,7 @@ def cir_RsRQTLs(w, Rs, L, Ri, R1, n1, fs1, R2, n2, fs2, Q1='none', Q2='none'):
     Output
     -----------
     Impedance of Rs-(RQ)1-TLs(RQ)2
-    '''
+    """
     Z_RQ = cir_RQ(w=w, R=R1, Q=Q1, n=n1, fs=fs1)
 
     Phi = cir_RQ(w=w, R=R2, Q=Q2, n=n2, fs=fs2)
@@ -746,7 +750,7 @@ def cir_RsRQTLs(w, Rs, L, Ri, R1, n1, fs1, R2, n2, fs2, Q1='none', Q2='none'):
 
 
 def cir_RsTLQ(w, L, Rs, Q, n, Rel, Ri):
-    '''
+    """
     Simulation Function: -R-TLQ- (interfacial non-reacting, i.e. blocking electrode)
     Transmission line w/ full complexity, which both includes Ri and Rel
 
@@ -772,7 +776,7 @@ def cir_RsTLQ(w, L, Rs, Q, n, Rel, Ri):
     Output
     --------------
     Impedance of Rs-TL
-    '''
+    """
     #The impedance of the series resistance
     Z_Rs = Rs
 
@@ -797,7 +801,7 @@ def cir_RsTLQ(w, L, Rs, Q, n, Rel, Ri):
 
 
 def cir_RsRQTLQ(w, L, Rs, Q, n, Rel, Ri, R1, n1, fs1, Q1='none'):
-    '''
+    """
     Simulation Function: -R-RQ-TLQ- (interfacial non-reacting, i.e. blocking electrode)
     Transmission line w/ full complexity, which both includes Ri and Rel
 
@@ -828,7 +832,7 @@ def cir_RsRQTLQ(w, L, Rs, Q, n, Rel, Ri, R1, n1, fs1, Q1='none'):
     Output
     --------------
     Impedance of Rs-TL
-    '''
+    """
     #The impedance of the series resistance
     Z_Rs = Rs
 
@@ -856,7 +860,7 @@ def cir_RsRQTLQ(w, L, Rs, Q, n, Rel, Ri, R1, n1, fs1, Q1='none'):
 
 
 def cir_RsTL(w, L, Rs, R, fs, n, Rel, Ri, Q='none'):
-    '''
+    """
     Simulation Function: -R-TL- (interfacial reacting, i.e. non-blocking)
     Transmission line w/ full complexity, which both includes Ri and Rel
 
@@ -884,7 +888,7 @@ def cir_RsTL(w, L, Rs, R, fs, n, Rel, Ri, Q='none'):
     Output
     --------------
     Impedance of Rs-TL
-    '''
+    """
     #The impedance of the series resistance
     Z_Rs = Rs
 
@@ -909,7 +913,7 @@ def cir_RsTL(w, L, Rs, R, fs, n, Rel, Ri, Q='none'):
 
 
 def cir_RsRQTL(w, L, Rs, R1, fs1, n1, R2, fs2, n2, Rel, Ri, Q1='none', Q2='none'):
-    '''
+    """
     Simulation Function: -R-RQ-TL- (interfacial reacting, i.e. non-blocking)
     Transmission line w/ full complexity, which both includes Ri and Rel
 
@@ -942,7 +946,7 @@ def cir_RsRQTL(w, L, Rs, R1, fs1, n1, R2, fs2, n2, Rel, Ri, Q1='none', Q2='none'
     Output
     --------------
     Impedance of Rs-TL
-    '''
+    """
     #The impedance of the series resistance
     Z_Rs = Rs
 
@@ -968,7 +972,7 @@ def cir_RsRQTL(w, L, Rs, R1, fs1, n1, R2, fs2, n2, Rel, Ri, Q1='none', Q2='none'
 
 
 def cir_RsTL_1Dsolid(w, L, D, radius, Rs, R, Q, n, R_w, n_w, Rel, Ri):
-    '''
+    """
     Simulation Function: -R-TL(Q(RW))-
     Transmission line w/ full complexity, which both includes Ri and Rel
 
@@ -1005,7 +1009,7 @@ def cir_RsTL_1Dsolid(w, L, D, radius, Rs, R, Q, n, R_w, n_w, Rel, Ri):
     Output
     --------------
     Impedance of Rs-TL(Q(RW))
-    '''
+    """
     #The impedance of the series resistance
     Z_Rs = Rs
 
@@ -1040,7 +1044,7 @@ def cir_RsTL_1Dsolid(w, L, D, radius, Rs, R, Q, n, R_w, n_w, Rel, Ri):
 
 
 def cir_RsRQTL_1Dsolid(w, L, D, radius, Rs, R1, fs1, n1, R2, Q2, n2, R_w, n_w, Rel, Ri, Q1='none'):
-    '''
+    """
     Simulation Function: -R-RQ-TL(Q(RW))-
     Transmission line w/ full complexity, which both includes Ri and Rel
 
@@ -1081,7 +1085,7 @@ def cir_RsRQTL_1Dsolid(w, L, D, radius, Rs, R1, fs1, n1, R2, Q2, n2, R_w, n_w, R
     Output
     ------------------
     Impedance of R-RQ-TL(Q(RW))
-    '''
+    """
     #The impedance of the series resistance
     Z_Rs = Rs
 
@@ -1123,37 +1127,37 @@ def cir_RsRQTL_1Dsolid(w, L, D, radius, Rs, R1, fs1, n1, R2, Q2, n2, R_w, n_w, R
 
 ###################################### FITS ####################################################
 def elem_C_fit(params, w):
-    '''
+    """
     Fit Function: -C-
-    '''
+    """
     C = params['C']
     return 1/(C*(w*1j))
 
 
 def elem_Q_fit(params, w):
-    '''
+    """
     Fit Function: -Q-
 
     Constant Phase Element for Fitting
-    '''
+    """
     Q = params['Q']
     n = params['n']
     return 1/(Q*(w*1j)**n)
 
 
 def cir_RsC_fit(params, w):
-    '''
+    """
     Fit Function: -Rs-C-
-    '''
+    """
     Rs = params['Rs']
     C = params['C']
     return Rs + 1/(C*(w*1j))
 
 
 def cir_RsQ_fit(params, w):
-    '''
+    """
     Fit Function: -Rs-Q-
-    '''
+    """
     Rs = params['Rs']
     Q = params['Q']
     n = params['n']
@@ -1161,10 +1165,10 @@ def cir_RsQ_fit(params, w):
 
 
 def cir_RC_fit(params, w):
-    '''
+    """
     Fit Function: -RC-
     Returns the impedance of an RC circuit, using RQ definitions where n=1
-    '''
+    """
     n=1
     if str(params.keys())[10:].find("R") == -1: #if R == 'none':
         Q = params['C']
@@ -1186,7 +1190,7 @@ def cir_RC_fit(params, w):
 
 
 def cir_RQ_fit(params, w):
-    '''
+    """
     Fit Function: -RQ-
     Return the impedance of an RQ circuit:
     Z(w) = R / (1+ R*Q * (2w)^n)
@@ -1197,7 +1201,7 @@ def cir_RQ_fit(params, w):
     over if X == -1, if the paramter is not given, it becomes equal to 'none'
 
     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    '''
+    """
     if str(params.keys())[10:].find("R") == -1: #if R == 'none':
         Q = params['Q']
         n = params['n']
@@ -1221,12 +1225,12 @@ def cir_RQ_fit(params, w):
 
 
 def cir_RsRQ_fit(params, w):
-    '''
+    """
     Fit Function: -Rs-RQ-
     Return the impedance of an Rs-RQ circuit. See details for RQ under cir_RsRQ_fit()
 
     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    '''
+    """
     if str(params.keys())[10:].find("R") == -1: #if R == 'none':
         Q = params['Q']
         n = params['n']
@@ -1252,12 +1256,12 @@ def cir_RsRQ_fit(params, w):
 
 
 def cir_RsRQRQ_fit(params, w):
-    '''
+    """
     Fit Function: -Rs-RQ-RQ-
     Return the impedance of an Rs-RQ circuit. See details under cir_RsRQRQ()
 
     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    '''
+    """
     if str(params.keys())[10:].find("'R'") == -1: #if R == 'none':
         Q = params['Q']
         n = params['n']
@@ -1303,14 +1307,14 @@ def cir_RsRQRQ_fit(params, w):
 
 
 def cir_Randles_simplified_Fit(params, w):
-    '''
+    """
     Fit Function: Randles simplified -Rs-(Q-(RW)-)-
     Return the impedance of a Randles circuit. See more under cir_Randles_simplified()
 
     NOTE: This Randles circuit is only meant for semi-infinate linear diffusion
 
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
-    '''
+    """
     if str(params.keys())[10:].find("'R'") == -1: #if R == 'none':
         Q = params['Q']
         n = params['n']
@@ -1342,11 +1346,11 @@ def cir_Randles_simplified_Fit(params, w):
 
 
 def cir_RsRQQ_fit(params, w):
-    '''
+    """
     Fit Function: -Rs-RQ-Q-
 
     See cir_RsRQQ() for details
-    '''
+    """
     Rs = params['Rs']
     Q = params['Q']
     n = params['n']
@@ -1377,11 +1381,11 @@ def cir_RsRQQ_fit(params, w):
 
 
 def cir_RsRQC_fit(params, w):
-    '''
+    """
     Fit Function: -Rs-RQ-C-
 
     See cir_RsRQC() for details
-    '''
+    """
     Rs = params['Rs']
     C = params['C']
     Z_C = 1/(C*(w*1j))
@@ -1411,11 +1415,11 @@ def cir_RsRQC_fit(params, w):
 
 
 def cir_RsRCC_fit(params, w):
-    '''
+    """
     Fit Function: -Rs-RC-C-
 
     See cir_RsRCC() for details
-    '''
+    """
     Rs = params['Rs']
     R1 = params['R1']
     C1 = params['C1']
@@ -1424,11 +1428,11 @@ def cir_RsRCC_fit(params, w):
 
 
 def cir_RsRCQ_fit(params, w):
-    '''
+    """
     Fit Function: -Rs-RC-Q-
 
     See cir_RsRCQ() for details
-    '''
+    """
     Rs = params['Rs']
     R1 = params['R1']
     C1 = params['C1']
@@ -1438,13 +1442,13 @@ def cir_RsRCQ_fit(params, w):
 
 
 def cir_C_RC_C_fit(params, w):
-    '''
+    """
     Fit Function: -C-(RC)-C-
 
     See cir_C_RC_C() for details
 
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
-    '''
+    """
     # Interfacial impedance
     Ce = params['Ce']
     Z_C = 1/(Ce*(w*1j))
@@ -1468,13 +1472,13 @@ def cir_C_RC_C_fit(params, w):
 
 
 def cir_Q_RQ_Q_Fit(params, w):
-    '''
+    """
     Fit Function: -Q-(RQ)-Q-
 
     See cir_Q_RQ_Q() for details
 
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
-    '''
+    """
     # Interfacial impedance
     Qe = params['Qe']
     ne = params['ne']
@@ -1506,13 +1510,13 @@ def cir_Q_RQ_Q_Fit(params, w):
 
 
 def cir_RCRCZD_fit(params, w):
-    '''
+    """
     Fit Function: -RC_b-RC_e-Z_D
 
     See cir_RCRCZD() for details
 
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
-    '''
+    """
     # Interfacial impendace
     if str(params.keys())[10:].find("Re") == -1: #if R == 'none':
         Ce = params['Ce']
@@ -1553,13 +1557,13 @@ def cir_RCRCZD_fit(params, w):
 
 
 def cir_RsTLsQ_fit(params, w):
-    '''
+    """
     Fit Function: -Rs-TLsQ-
     TLs = Simplified Transmission Line, with a non-faradaic interfacial impedance (Q)
     See more under cir_RsTLsQ()
 
     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    '''
+    """
     Rs = params['Rs']
     L = params['L']
     Ri = params['Ri']
@@ -1583,13 +1587,13 @@ def cir_RsTLsQ_fit(params, w):
 
 
 def cir_RsRQTLsQ_Fit(params, w):
-    '''
+    """
     Fit Function: -Rs-RQ-TLsQ-
     TLs = Simplified Transmission Line, with a non-faradaic interfacial impedance (Q)
     See more under cir_RsRQTLsQ
 
     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    '''
+    """
     Rs = params['Rs']
     L = params['L']
     Ri = params['Ri']
@@ -1634,13 +1638,13 @@ def cir_RsRQTLsQ_Fit(params, w):
 
 
 def cir_RsTLs_Fit(params, w):
-    '''
+    """
     Fit Function: -Rs-RQ-TLs-
     TLs = Simplified Transmission Line, with a faradaic interfacial impedance (RQ)
     See mor under cir_RsTLs()
 
     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    '''
+    """
     Rs = params['Rs']
     L = params['L']
     Ri = params['Ri']
@@ -1680,13 +1684,13 @@ def cir_RsTLs_Fit(params, w):
 
 
 def cir_RsRQTLs_Fit(params, w):
-    '''
+    """
     Fit Function: -Rs-RQ-TLs-
     TLs = Simplified Transmission Line with a faradaic interfacial impedance (RQ)
     See more under cir_RsRQTLs()
 
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
-    '''
+    """
     Rs = params['Rs']
     L = params['L']
     Ri = params['Ri']
@@ -1747,12 +1751,12 @@ def cir_RsRQTLs_Fit(params, w):
 
 
 def cir_RsTLQ_fit(params, w):
-    '''
+    """
     Fit Function: -R-TLQ- (interface non-reacting, i.e. blocking electrode)
     Transmission line w/ full complexity, which both includes Ri and Rel
 
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
-    '''
+    """
     Rs = params['Rs']
     L = params['L']
     Ri = params['Ri']
@@ -1784,12 +1788,12 @@ def cir_RsTLQ_fit(params, w):
 
 
 def cir_RsRQTLQ_fit(params, w):
-    '''
+    """
     Fit Function: -R-RQ-TLQ- (interface non-reacting, i.e. blocking electrode)
     Transmission line w/ full complexity, which both includes Ri and Rel
 
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
-    '''
+    """
     Rs = params['Rs']
     L = params['L']
     Ri = params['Ri']
@@ -1843,7 +1847,7 @@ def cir_RsRQTLQ_fit(params, w):
 
 
 def cir_RsTL_Fit(params, w):
-    '''
+    """
     Fit Function: -R-TLQ- (interface reacting, i.e. non-blocking)
     Transmission line w/ full complexity, which both includes Ri and Rel
 
@@ -1851,7 +1855,7 @@ def cir_RsTL_Fit(params, w):
 
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
 
-    '''
+    """
     Rs = params['Rs']
     L = params['L']
     Ri = params['Ri']
@@ -1901,12 +1905,12 @@ def cir_RsTL_Fit(params, w):
 
 
 def cir_RsRQTL_fit(params, w):
-    '''
+    """
     Fit Function: -R-RQ-TL- (interface reacting, i.e. non-blocking)
     Transmission line w/ full complexity including both includes Ri and Rel
 
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
-    '''
+    """
     Rs = params['Rs']
     L = params['L']
     Ri = params['Ri']
@@ -1979,7 +1983,7 @@ def cir_RsRQTL_fit(params, w):
 
 
 def cir_RsTL_1Dsolid_fit(params, w):
-    '''
+    """
     Fit Function: -R-TL(Q(RW))-
     Transmission line w/ full complexity
 
@@ -1987,7 +1991,7 @@ def cir_RsTL_1Dsolid_fit(params, w):
 
     David Brown (demoryb@berkeley.edu)
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
-    '''
+    """
     Rs = params['Rs']
     L = params['L']
     Ri = params['Ri']
@@ -2037,7 +2041,7 @@ def cir_RsTL_1Dsolid_fit(params, w):
 
 
 def cir_RsRQTL_1Dsolid_fit(params, w):
-    '''
+    """
     Fit Function: -R-RQ-TL(Q(RW))-
     Transmission line w/ full complexity, which both includes Ri and Rel. The Warburg element is specific for 1D solid-state diffusion
 
@@ -2045,7 +2049,7 @@ def cir_RsRQTL_1Dsolid_fit(params, w):
 
     David Brown (demoryb@berkeley.edu)
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
-    '''
+    """
     Rs = params['Rs']
     L = params['L']
     Ri = params['Ri']
@@ -2117,7 +2121,7 @@ def cir_RsRQTL_1Dsolid_fit(params, w):
 
 
 def leastsq_errorfunc(params, w, re, im, circuit, weight_func):
-    '''
+    """
     Sum of squares error function for the complex non-linear least-squares fitting procedure (CNLS).
     The fitting function (lmfit) will use this function to iterate over until the total sum of
     errors is minimized.
@@ -2170,7 +2174,7 @@ def leastsq_errorfunc(params, w, re, im, circuit, weight_func):
         - modulus
         - unity
         - proportional
-    '''
+    """
     if circuit == 'C':
         re_fit = elem_C_fit(params, w).real
         im_fit = -elem_C_fit(params, w).imag
@@ -2196,8 +2200,11 @@ def leastsq_errorfunc(params, w, re, im, circuit, weight_func):
         re_fit = cir_RsRQRQ_fit(params, w).real
         im_fit = -cir_RsRQRQ_fit(params, w).imag
     elif circuit == 'L-R-RQ-RQ-RQ':
-        re_fit=cir_LRsRQRQRQ_fit(params, w).real
+        re_fit = cir_LRsRQRQRQ_fit(params, w).real
         im_fit = -cir_LRsRQRQRQ_fit(params, w).imag
+    elif circuit == 'L-R-Q(R)-Q(R-Q(R))-Q(R)':
+        re_fit = cir_LRQRQRQRQR_fit(params, w).real
+        im_fit = -cir_LRQRQRQRQR_fit(params, w).imag
     elif circuit == 'R-RC-C':
         re_fit = cir_RsRCC_fit(params, w).real
         im_fit = -cir_RsRCC_fit(params, w).imag
