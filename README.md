@@ -40,20 +40,23 @@ The built-in equivalent circuits are illustrated in the following figure. Here B
 </p>
 
 ## Software and Installation
-PyEIS is available on PyPI and can be install using the following command
+clone:
 
-> - pip install PyEIS==1.0.10
+`git clone git@github.com:deanna-abrams/PyEIS.git`
 
-### Dependencies
-The following libraries are required by PyEIS
+Create conda environment:
 
-- numpy >= 1.13.3
-- scipy >= 1.0.1
-- pandas >= 0.22.0
-- mpmath >= 1.1.0
-- lmfit >= 0.9.7
-- matplotlib >= 2.2.2
-- seaborn >= 0.8.1
+`cd PyEIS`
+
+`conda env create -n eis -f environment.yml`
+
+`conda activate eis`
+
+`pip install -e .`
+
+Create a jupyter kernel for this environment:
+
+`python -m ipykernel install --user --name eis --display-name "eis"`
 
 
 ### [Release history](https://github.com/kbknudsen/PyEIS/blob/master/Changes.txt)
