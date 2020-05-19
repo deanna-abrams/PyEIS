@@ -1982,7 +1982,7 @@ class EIS_exp:
                                            self.df[i].re.values,
                                            self.df[i].im.values,
                                            circuit,
-                                           weight_func), nan_policy=nan_policy, max_nfev=9999990))
+                                           weight_func), nan_policy=nan_policy, max_nfev=99999))
             print(report_fit(self.Fit[i]))
             
             self.fit_E.append(np.average(self.df[i].E_avg))
@@ -3237,7 +3237,7 @@ class EIS_sim:
         '''
         self.Fit = minimize(leastsq_errorfunc, params, method='leastsq',
                             args=(self.w, self.re, self.im, circuit, weight_func),
-                            max_nfev=9999990, nan_policy=nan_policy)
+                            max_nfev=99999, nan_policy=nan_policy)
         print(report_fit(self.Fit))
 
         if circuit == 'C':
