@@ -197,6 +197,43 @@ def cir_RsRQRQ(w, Rs, R='none', Q='none', n='none', fs='none', R2='none', Q2='no
     return Rs + (R/(1+R*Q*(w*1j)**n)) + (R2/(1+R2*Q2*(w*1j)**n2))
 
 
+# L-Rs-RQ-RQ
+def cir_LRsRQRQ(w, Rs, L,
+                  R1: Optional[float] = None, Q1: Optional[float] = None,
+                  n1: Optional[float] = None, fs1: Optional[float] = None,
+                  R2: Optional[float] = None, Q2: Optional[float] = None,
+                  n2: Optional[float] = None, fs2: Optional[float] = None,):
+    """
+    Simulation Function: L-Rs-RQ-RQ-RQ
+
+
+    Inputs
+    ----------
+    w = Angular frequency [1/s]
+    Rs = Series Resistance [Ohm]
+    L = Series Impedence
+
+    R1 = Resistance [Ohm]
+    Q1 = Constant phase element [s^n/ohm]
+    n1 = Constant phase element exponent [-]
+    fs1 = Summit frequency of RQ circuit [Hz]
+
+    R2 = Resistance [Ohm]
+    Q2 = Constant phase element [s^n/ohm]
+    n2 = Constant phase element exponent [-]
+    fs2 = Summit frequency of RQ circuit [Hz]
+    """
+    return elem_L(w, L) + Rs + cir_RQ(w, R1, Q1, n1, fs1) + cir_RQ(w, R2, Q2, n2, fs2)
+
+
+def cir_LRsRQRQ_fit(params, w):
+    return cir_LRsRQRQ(w, params['Rs'], params['L'],
+                       R1=params.get('R1'), Q1=params.get('Q1'),
+                       n1=params.get('n1'), fs1=params.get('fs1'),
+                       R2=params.get('R2'), Q2=params.get('Q2'),
+                       n2=params.get('n2'), fs2=params.get('fs2'))
+
+
 # L-Rs-RQ-RQ-RQ
 def cir_LRsRQRQRQ(w, Rs, L,
                   R1: Optional[float] = None, Q1: Optional[float] = None,
@@ -2119,6 +2156,40 @@ def cir_RsRQTL_1Dsolid_fit(params, w):
 
     return Z_Rs + Z_RQ1 + Z_TL
 
+# For the outside world
+CIRCUIT_DICT = {
+    'C': elem_C_fit,
+    'Q': elem_Q_fit,
+    'R-C': cir_RsC_fit,
+    'R-Q': cir_RsQ_fit,
+    'RC': cir_RC_fit,
+    'RQ': cir_RQ_fit,
+    'R-RQ': cir_RsRQ_fit,
+    'R-RQ-RQ': cir_RsRQRQ_fit,
+    'L-R-RQ-RQ': cir_LRsRQRQ_fit,
+    'L-R-RQ-RQ-RQ': cir_LRsRQRQRQ_fit,
+    'L-R-Q(R)-Q(R-Q(R))-Q(R)': cir_LRQRQRQRQR_fit,
+    'R-RC-C': cir_RsRCC_fit,
+    'R-RC-Q': cir_RsRCQ_fit,
+    'R-RQ-Q': cir_RsRQQ_fit,
+    'R-RQ-C': cir_RsRQC_fit,
+    'R-(Q(RW))': cir_Randles_simplified_Fit,
+    # 'R-(Q(RM))': cir_Randles_uelectrode_fit,
+    'C-RC-C': cir_C_RC_C_fit,
+    'Q-RQ-Q': cir_Q_RQ_Q_Fit,
+    'RC-RC-ZD': cir_RCRCZD_fit,
+    'R-TLsQ': cir_RsRQTLsQ_Fit,
+    'R-RQ-TLsQ': cir_RsRQTLsQ_Fit,
+    'R-TLs': cir_RsTLs_Fit,
+    'R-RQ-TLs': cir_RsRQTLs_Fit,
+    'R-TLQ': cir_RsTLQ_fit,
+    'R-RQ-TLQ': cir_RsRQTLQ_fit,
+    'R-Tl': cir_RsTL_Fit,
+    'R-RQ-TL': cir_RsRQTL_fit,
+    'R-TL1Dsolid': cir_RsTL_1Dsolid_fit,
+    'R-RQ-TL1Dsolid': cir_RsRQTL_1Dsolid_fit,
+}
+
 
 def leastsq_errorfunc(params, w, re, im, circuit, weight_func):
     """
@@ -2141,133 +2212,23 @@ def leastsq_errorfunc(params, w, re, im, circuit, weight_func):
     - re: real impedance
     - im: Imaginary impedance
     - circuit:
-      The avaliable circuits are shown below, and this this parameter needs it as a string.
-        - C
-        - Q
-        - R-C
-        - R-Q
-        - RC
-        - RQ
-        - R-RQ
-        - R-RQ-RQ
-        - R-RQ-Q
-        - R-(Q(RW))
-        - R-(Q(RM))
-        - R-RC-C
-        - R-RC-Q
-        - R-RQ-Q
-        - R-RQ-C
-        - RC-RC-ZD
-        - R-TLsQ
-        - R-RQ-TLsQ
-        - R-TLs
-        - R-RQ-TLs
-        - R-TLQ
-        - R-RQ-TLQ
-        - R-TL
-        - R-RQ-TL
-        - R-TL1Dsolid (reactive interface with 1D solid-state diffusion)
-        - R-RQ-TL1Dsolid
-
+      The avaliable circuits are the keys of CIRCUIT_DICT
     - weight_func
       Weight function
         - modulus
         - unity
         - proportional
     """
-    if circuit == 'C':
-        re_fit = elem_C_fit(params, w).real
-        im_fit = -elem_C_fit(params, w).imag
-    elif circuit == 'Q':
-        re_fit = elem_Q_fit(params, w).real
-        im_fit = -elem_Q_fit(params, w).imag
-    elif circuit == 'R-C':
-        re_fit = cir_RsC_fit(params, w).real
-        im_fit = -cir_RsC_fit(params, w).imag
-    elif circuit == 'R-Q':
-        re_fit = cir_RsQ_fit(params, w).real
-        im_fit = -cir_RsQ_fit(params, w).imag
-    elif circuit == 'RC':
-        re_fit = cir_RC_fit(params, w).real
-        im_fit = -cir_RC_fit(params, w).imag
-    elif circuit == 'RQ':
-        re_fit = cir_RQ_fit(params, w).real
-        im_fit = -cir_RQ_fit(params, w).imag
-    elif circuit == 'R-RQ':
-        re_fit = cir_RsRQ_fit(params, w).real
-        im_fit = -cir_RsRQ_fit(params, w).imag
-    elif circuit == 'R-RQ-RQ':
-        re_fit = cir_RsRQRQ_fit(params, w).real
-        im_fit = -cir_RsRQRQ_fit(params, w).imag
-    elif circuit == 'L-R-RQ-RQ-RQ':
-        re_fit = cir_LRsRQRQRQ_fit(params, w).real
-        im_fit = -cir_LRsRQRQRQ_fit(params, w).imag
-    elif circuit == 'L-R-Q(R)-Q(R-Q(R))-Q(R)':
-        re_fit = cir_LRQRQRQRQR_fit(params, w).real
-        im_fit = -cir_LRQRQRQRQR_fit(params, w).imag
-    elif circuit == 'R-RC-C':
-        re_fit = cir_RsRCC_fit(params, w).real
-        im_fit = -cir_RsRCC_fit(params, w).imag
-    elif circuit == 'R-RC-Q':
-        re_fit = cir_RsRCQ_fit(params, w).real
-        im_fit = -cir_RsRCQ_fit(params, w).imag
-    elif circuit == 'R-RQ-Q':
-        re_fit = cir_RsRQQ_fit(params, w).real
-        im_fit = -cir_RsRQQ_fit(params, w).imag
-    elif circuit == 'R-RQ-C':
-        re_fit = cir_RsRQC_fit(params, w).real
-        im_fit = -cir_RsRQC_fit(params, w).imag
-    elif circuit == 'R-(Q(RW))':
-        re_fit = cir_Randles_simplified_Fit(params, w).real
-        im_fit = -cir_Randles_simplified_Fit(params, w).imag
-    # elif circuit == 'R-(Q(RM))':
-    #     re_fit = cir_Randles_uelectrode_fit(params, w).real
-    #     im_fit = -cir_Randles_uelectrode_fit(params, w).imag
-    elif circuit == 'C-RC-C':
-        re_fit = cir_C_RC_C_fit(params, w).real
-        im_fit = -cir_C_RC_C_fit(params, w).imag
-    elif circuit == 'Q-RQ-Q':
-        re_fit = cir_Q_RQ_Q_Fit(params, w).real
-        im_fit = -cir_Q_RQ_Q_Fit(params, w).imag
-    elif circuit == 'RC-RC-ZD':
-        re_fit = cir_RCRCZD_fit(params, w).real
-        im_fit = -cir_RCRCZD_fit(params, w).imag
-    elif circuit == 'R-TLsQ':
-        re_fit = cir_RsTLsQ_fit(params, w).real
-        im_fit = -cir_RsTLsQ_fit(params, w).imag
-    elif circuit == 'R-RQ-TLsQ':
-        re_fit = cir_RsRQTLsQ_Fit(params, w).real
-        im_fit = -cir_RsRQTLsQ_Fit(params, w).imag
-    elif circuit == 'R-TLs':
-        re_fit = cir_RsTLs_Fit(params, w).real
-        im_fit = -cir_RsTLs_Fit(params, w).imag
-    elif circuit == 'R-RQ-TLs':
-        re_fit = cir_RsRQTLs_Fit(params, w).real
-        im_fit = -cir_RsRQTLs_Fit(params, w).imag
-    elif circuit == 'R-TLQ':
-        re_fit = cir_RsTLQ_fit(params, w).real
-        im_fit = -cir_RsTLQ_fit(params, w).imag
-    elif circuit == 'R-RQ-TLQ':
-        re_fit = cir_RsRQTLQ_fit(params, w).real
-        im_fit = -cir_RsRQTLQ_fit(params, w).imag
-    elif circuit == 'R-TL':
-        re_fit = cir_RsTL_Fit(params, w).real
-        im_fit = -cir_RsTL_Fit(params, w).imag
-    elif circuit == 'R-RQ-TL':
-        re_fit = cir_RsRQTL_fit(params, w).real
-        im_fit = -cir_RsRQTL_fit(params, w).imag
-    elif circuit == 'R-TL1Dsolid':
-        re_fit = cir_RsTL_1Dsolid_fit(params, w).real
-        im_fit = -cir_RsTL_1Dsolid_fit(params, w).imag
-    elif circuit == 'R-RQ-TL1Dsolid':
-        re_fit = cir_RsRQTL_1Dsolid_fit(params, w).real
-        im_fit = -cir_RsRQTL_1Dsolid_fit(params, w).imag
+    if circuit in list(CIRCUIT_DICT.keys()):
+        re_fit = CIRCUIT_DICT[circuit](params, w).real
+        im_fit = -CIRCUIT_DICT[circuit](params, w).imag
     else:
-        print('Circuit is not defined in leastsq_errorfunc()')
+        raise ValueError(f'circuit {circuit} is not one of the supported circuit strings')
 
-    error = [(re-re_fit)**2, (im-im_fit)**2] #sum of squares
+    # sum of squares
+    error = [(re-re_fit)**2, (im-im_fit)**2]
 
-    #Different Weighing options, see Lasia
+    # Different Weighing options, see Lasia
     if weight_func == 'modulus':
         weight = [1/((re_fit**2 + im_fit**2)**(1/2)), 1/((re_fit**2 + im_fit**2)**(1/2))]
     elif weight_func == 'proportional':
@@ -2275,10 +2236,12 @@ def leastsq_errorfunc(params, w, re, im, circuit, weight_func):
     elif weight_func == 'unity':
         unity_1s = []
         for k in range(len(re)):
-            unity_1s.append(1) #makes an array of [1]'s, so that the weighing is == 1 * sum of squres.
+            # makes an array of [1]'s, so that the weighing is == 1 * sum of squres.
+            unity_1s.append(1)
         weight = [unity_1s, unity_1s]
     else:
-        print('weight not defined in leastsq_errorfunc()')
+        raise ValueError('weight not defined in leastsq_errorfunc()')
 
-    S = np.array(weight) * error #weighted sum of squares
+    # weighted sum of squares
+    S = np.array(weight) * error
     return S

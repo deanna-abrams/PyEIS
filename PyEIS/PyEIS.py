@@ -5,18 +5,18 @@ Created on Mon Mar  5 12:13:33 2018
 
 @author: Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
 """
-#Python dependencies
-from __future__ import division
+import matplotlib as mpl
 import pandas as pd
+from lmfit import minimize, report_fit
 from pylab import *
-#from scipy.optimize import leastsq
-from .circuits import *
+import seaborn as sns
+
+from .circuits import CIRCUIT_DICT, leastsq_errorfunc
+from .PyEIS_Data_extraction import *
+from .PyEIS_Lin_KK import *
+from .PyEIS_Advanced_tools import *
 
 pd.options.mode.chained_assignment = None
-
-#Plotting
-import matplotlib as mpl
-import seaborn as sns
 
 mpl.rc('mathtext', fontset='stixsans', default='regular')
 mpl.rcParams.update({'axes.labelsize': 10})
@@ -24,16 +24,9 @@ mpl.rc('xtick', labelsize=10)
 mpl.rc('ytick', labelsize=10)
 mpl.rc('legend', fontsize=10)
 
-### Importing PyEIS add-ons
-from .PyEIS_Data_extraction import *
-from .PyEIS_Lin_KK import *
-from .PyEIS_Advanced_tools import *
-
-### Frequency generator
-##
-#
+# Frequency generator
 def freq_gen(f_start, f_stop, pts_decade=7):
-    '''
+    """
     Frequency Generator with logspaced freqencies
     
     Inputs
@@ -46,54 +39,26 @@ def freq_gen(f_start, f_stop, pts_decade=7):
     ----------
     [0] = frequency range [Hz]
     [1] = Angular frequency range [1/s]
-    '''
+    """
     f_decades = np.log10(f_start) - np.log10(f_stop)
     f_range = np.logspace(np.log10(f_start), np.log10(f_stop),
                           num=int(np.around(pts_decade*f_decades)), endpoint=True)
     w_range = 2 * np.pi * f_range
     return f_range, w_range
 
-### Simulation Element Functions
-##
-#
-
-### Simulation Curciuts Functions
-##
-#
-
-
-# Polymer electrolytes
-
-# Transmission lines
-
-### Support function
-
-###
-
-# Transmission lines with solid-state transport
-
-### Fitting Circuit Functions
-##
-#
-
-
-# Polymer electrolytes
-
-# Transmission lines
-
-### Least-Squares error function
-
-### Fitting Class
+# Fitting Class
 class EIS_exp:
-    '''
-    This class is used to plot and/or analyze experimental impedance data. The class has three major functions:
+    """
+    This class is used to plot and/or analyze experimental impedance data. The class has three
+    major functions:
         - EIS_plot()
         - Lin_KK()
         - EIS_fit()
 
     - EIS_plot() is used to plot experimental data with or without fit
     - Lin_KK() performs a linear Kramers-Kronig analysis of the experimental data set.
-    - EIS_fit() performs complex non-linear least-squares fitting of the experimental data to an equivalent circuit
+    - EIS_fit() performs complex non-linear least-squares fitting of the experimental data to an
+     equivalent circuit
     
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)
 
@@ -101,10 +66,13 @@ class EIS_exp:
     -----------
         - path: path of datafile(s) as a string
         - data: datafile(s) including extension, e.g. ['EIS_data1', 'EIS_data2']
-        - cycle: Specific cycle numbers can be extracted using the cycle function. Default is 'none', which includes all cycle numbers.
-        Specific cycles can be extracted using this parameter, insert cycle numbers in brackets, e.g. cycle number 1,4, and 6 are wanted. cycle=[1,4,6]
-        - mask: ['high frequency' , 'low frequency'], if only a high- or low-frequency is desired use 'none' for the other, e.g. maks=[10**4,'none']
-    '''
+        - cycle: Specific cycle numbers can be extracted using the cycle function. Default is
+        'none', which includes all cycle numbers.
+        Specific cycles can be extracted using this parameter, insert cycle numbers in brackets,
+         e.g. cycle number 1,4, and 6 are wanted. cycle=[1,4,6]
+        - mask: ['high frequency' , 'low frequency'], if only a high- or low-frequency is desired
+        use 'none' for the other, e.g. maks=[10**4,'none']
+    """
     def __init__(self, path, data, cycle='off', mask=['none','none']):
         self.df_raw0 = []
         self.cycleno = []
@@ -204,7 +172,6 @@ class EIS_exp:
         else:
             print('__init__ error (#2)')
 
-
     def Lin_KK(self, 
                num_RC='auto', 
                legend='on', 
@@ -214,7 +181,7 @@ class EIS_exp:
                nyq_ylim='none', 
                weight_func='Boukamp', 
                savefig='none'):
-        '''
+        """
         Plots the Linear Kramers-Kronig (KK) Validity Test
         The script is based on Boukamp and Schōnleber et al.'s papers for fitting the resistances of multiple -(RC)- circuits
         to the data. A data quality analysis can hereby be made on the basis of the relative residuals
@@ -256,7 +223,7 @@ class EIS_exp:
             
             'im' = im vs. log(freq)
             'log_im' = log(im) vs. log(freq)
-        '''
+        """
         if num_RC == 'auto':
             print('cycle || No. RC-elements ||   u')
             self.decade = []
@@ -317,7 +284,7 @@ class EIS_exp:
                                                   args=(self.df[i].w.values,
                                                         self.df[i].re.values,
                                                         self.df[i].im.values,
-                                                        self.number_RC[i],
+                                                        int(self.number_RC[i]),
                                                         weight_func,
                                                         self.t_const[i]) ) #maxfev=99
                     self.R_names[i] = KK_Rnam_val(re=self.df[i].re, re_start=self.df[i].re.idxmin(), num_RC=int(self.number_RC[i]))[1] #creates R names
@@ -362,7 +329,7 @@ class EIS_exp:
                                                 args=(self.df[i].w.values,
                                                       self.df[i].re.values,
                                                       self.df[i].im.values,
-                                                      self.number_RC0[i],
+                                                      int(self.number_RC0[i]),
                                                       weight_func,
                                                       self.t_const[i]))) #maxfev=99
                 #creates R names
@@ -396,175 +363,20 @@ class EIS_exp:
         self.KK_rr_re = []
         self.KK_rr_im = []
         for i in range(len(self.df)):
-            if int(self.number_RC[i]) == 2:
-                self.KK_circuit_fit.append(KK_RC2(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 3:
-                self.KK_circuit_fit.append(KK_RC3(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 4:
-                self.KK_circuit_fit.append(KK_RC4(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 5:
-                self.KK_circuit_fit.append(KK_RC5(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 6:
-                self.KK_circuit_fit.append(KK_RC6(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 7:
-                self.KK_circuit_fit.append(KK_RC7(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 8:
-                self.KK_circuit_fit.append(KK_RC8(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 9:
-                self.KK_circuit_fit.append(KK_RC9(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 10:
-                self.KK_circuit_fit.append(KK_RC10(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 11:
-                self.KK_circuit_fit.append(KK_RC11(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 12:
-                self.KK_circuit_fit.append(KK_RC12(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 13:
-                self.KK_circuit_fit.append(KK_RC13(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 14:
-                self.KK_circuit_fit.append(KK_RC14(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 15:
-                self.KK_circuit_fit.append(KK_RC15(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 16:
-                self.KK_circuit_fit.append(KK_RC16(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 17:
-                self.KK_circuit_fit.append(KK_RC17(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 18:
-                self.KK_circuit_fit.append(KK_RC18(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 19:
-                self.KK_circuit_fit.append(KK_RC19(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 20:
-                self.KK_circuit_fit.append(KK_RC20(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 21:
-                self.KK_circuit_fit.append(KK_RC21(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 22:
-                self.KK_circuit_fit.append(KK_RC22(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 23:
-                self.KK_circuit_fit.append(KK_RC23(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 24:
-                self.KK_circuit_fit.append(KK_RC24(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 25:
-                self.KK_circuit_fit.append(KK_RC25(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 26:
-                self.KK_circuit_fit.append(KK_RC26(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 27:
-                self.KK_circuit_fit.append(KK_RC27(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 28:
-                self.KK_circuit_fit.append(KK_RC28(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 29:
-                self.KK_circuit_fit.append(KK_RC29(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 30:
-                self.KK_circuit_fit.append(KK_RC30(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 31:
-                self.KK_circuit_fit.append(KK_RC31(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 32:
-                self.KK_circuit_fit.append(KK_RC32(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 33:
-                self.KK_circuit_fit.append(KK_RC33(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 34:
-                self.KK_circuit_fit.append(KK_RC34(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 35:
-                self.KK_circuit_fit.append(KK_RC35(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 36:
-                self.KK_circuit_fit.append(KK_RC36(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 37:
-                self.KK_circuit_fit.append(KK_RC37(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 38:
-                self.KK_circuit_fit.append(KK_RC38(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 39:
-                self.KK_circuit_fit.append(KK_RC39(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 40:
-                self.KK_circuit_fit.append(KK_RC40(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 41:
-                self.KK_circuit_fit.append(KK_RC41(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 42:
-                self.KK_circuit_fit.append(KK_RC42(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 43:
-                self.KK_circuit_fit.append(KK_RC43(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 44:
-                self.KK_circuit_fit.append(KK_RC44(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 45:
-                self.KK_circuit_fit.append(KK_RC45(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 46:
-                self.KK_circuit_fit.append(KK_RC46(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 47:
-                self.KK_circuit_fit.append(KK_RC47(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 48:
-                self.KK_circuit_fit.append(KK_RC48(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 49:
-                self.KK_circuit_fit.append(KK_RC49(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 50:
-                self.KK_circuit_fit.append(KK_RC50(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 51:
-                self.KK_circuit_fit.append(KK_RC51(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 52:
-                self.KK_circuit_fit.append(KK_RC52(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 53:
-                self.KK_circuit_fit.append(KK_RC53(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 54:
-                self.KK_circuit_fit.append(KK_RC54(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 55:
-                self.KK_circuit_fit.append(KK_RC55(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 56:
-                self.KK_circuit_fit.append(KK_RC56(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 57:
-                self.KK_circuit_fit.append(KK_RC57(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 58:
-                self.KK_circuit_fit.append(KK_RC58(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 59:
-                self.KK_circuit_fit.append(KK_RC59(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 60:
-                self.KK_circuit_fit.append(KK_RC60(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 61:
-                self.KK_circuit_fit.append(KK_RC61(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 62:
-                self.KK_circuit_fit.append(KK_RC62(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 63:
-                self.KK_circuit_fit.append(KK_RC63(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 64:
-                self.KK_circuit_fit.append(KK_RC64(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 65:
-                self.KK_circuit_fit.append(KK_RC65(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 66:
-                self.KK_circuit_fit.append(KK_RC66(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 67:
-                self.KK_circuit_fit.append(KK_RC67(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 68:
-                self.KK_circuit_fit.append(KK_RC68(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 69:
-                self.KK_circuit_fit.append(KK_RC69(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 70:
-                self.KK_circuit_fit.append(KK_RC70(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 71:
-                self.KK_circuit_fit.append(KK_RC71(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 72:
-                self.KK_circuit_fit.append(KK_RC72(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 73:
-                self.KK_circuit_fit.append(KK_RC73(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 74:
-                self.KK_circuit_fit.append(KK_RC74(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 75:
-                self.KK_circuit_fit.append(KK_RC75(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 76:
-                self.KK_circuit_fit.append(KK_RC76(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 77:
-                self.KK_circuit_fit.append(KK_RC77(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 78:
-                self.KK_circuit_fit.append(KK_RC78(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 79:
-                self.KK_circuit_fit.append(KK_RC79(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            elif int(self.number_RC[i]) == 80:
-                self.KK_circuit_fit.append(KK_RC80(w=self.df[i].w, Rs=self.Lin_KK_Fit[i].params.get('Rs').value, R_values=self.KK_R[i], t_values=self.t_const[i]))
-            else:
-                print('RC simulation circuit not defined')
-                print('   Number of RC = ', self.number_RC)
+            self.KK_circuit_fit.append(KK_RC(w=self.df[i].w,
+                                             Rs=self.Lin_KK_Fit[i].params.get('Rs').value,
+                                             R_values=self.KK_R[i],
+                                             t_values=self.t_const[i],
+                                             num_RC=int(self.number_RC[i])))
+
             # relative residuals for the real part
             self.KK_rr_re.append(residual_real(re=self.df[i].re,
-                                               fit_re=self.KK_circuit_fit[i].values.real,
-                                               fit_im=-self.KK_circuit_fit[i].values.imag))
+                                               fit_re=self.KK_circuit_fit[i].real,
+                                               fit_im=-self.KK_circuit_fit[i].imag))
             # relative residuals for the imag part
             self.KK_rr_im.append(residual_imag(im=self.df[i].im,
-                                               fit_re=self.KK_circuit_fit[i].values.real,
-                                               fit_im=-self.KK_circuit_fit[i].values.imag))
+                                               fit_re=self.KK_circuit_fit[i].real,
+                                               fit_im=-self.KK_circuit_fit[i].imag))
 
         ### Plotting Linear_kk results
         ##
@@ -1924,7 +1736,7 @@ class EIS_exp:
                 print('Too many spectras, cannot plot all. Maximum spectras allowed = 9')
 
     def EIS_fit(self, params, circuit, weight_func='modulus', nan_policy='raise'):
-        '''
+        """
         EIS_fit() fits experimental data to an equivalent circuit model using complex non-linear
         least-squares (CNLS) fitting procedure and allows for batch fitting.
         
@@ -1933,28 +1745,8 @@ class EIS_exp:
         Inputs
         ------------
         - circuit:
-          Choose an equivalent circuits and defined circuit as a string. The following circuits
-          are avaliable.
-            - RC
-            - RQ
-            - R-RQ
-            - R-RQ-RQ
-            - R-Q
-            - R-RQ-Q
-            - R-(Q(RW))
-            - C-RC-C
-            - Q-RQ-Q
-            - RC-RC-ZD
-            - R-TLsQ
-            - R-RQ-TLsQ
-            - R-TLs
-            - R-RQ-TLs
-            - R-TLQ
-            - R-RQ-TLQ
-            - R-TL
-            - R-RQ-TL
-            - R-TL1Dsolid (reactive interface with 1D solid-state diffusion)
-            - R-RQ-TL1Dsolid
+          Choose an equivalent circuits and defined circuit as a string. The available circuits
+          are the keys of CIRCUIT_DICT in the circuits file.
 
         - weight_func
           The weight function to which the CNLS fitting is performed
@@ -1972,7 +1764,7 @@ class EIS_exp:
         ------------
         Returns the fitted impedance spectra(s) but also the fitted parameters that were used in
         the initial guesses. To call these use e.g. self.fit_Rs
-        '''
+        """
         self.Fit = []
         self.circuit_fit = []
         self.fit_E = []
@@ -1986,644 +1778,16 @@ class EIS_exp:
             print(report_fit(self.Fit[i]))
             
             self.fit_E.append(np.average(self.df[i].E_avg))
-            
-        if circuit == 'C':
-            self.fit_C = []
+        if circuit in list(CIRCUIT_DICT.keys()):
             for i in range(len(self.df)):
-                self.circuit_fit.append(elem_C(w=self.df[i].w, C=self.Fit[i].params.get('C').value))
-                self.fit_C.append(self.Fit[i].params.get('C').value)
-        elif circuit == 'Q':
-            self.fit_Q = []
-            self.fit_n = []
-            for i in range(len(self.df)):
-                self.circuit_fit.append(elem_Q(w=self.df[i].w, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value))
-                self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                self.fit_n.append(self.Fit[i].params.get('n').value)
-        elif circuit == 'R-C':
-            self.fit_Rs = []
-            self.fit_C = []
-            for i in range(len(self.df)):
-                self.circuit_fit.append(
-                    cir_RsC(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, C=self.Fit[i].params.get('C').value))
-                self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                self.fit_C.append(self.Fit[i].params.get('C').value)
-        elif circuit == 'R-Q':
-            self.fit_Rs = []
-            self.fit_Q = []
-            self.fit_n = []
-            for i in range(len(self.df)):
-                self.circuit_fit.append(
-                    cir_RsQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value))
-                self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                self.fit_n.append(self.Fit[i].params.get('n').value)
-        elif circuit == 'RC':
-            self.fit_R = []
-            self.fit_C = []
-            self.fit_fs = []
-            for i in range(len(self.df)):
-                if "'C'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RC(w=self.df[i].w, C=self.Fit[i].params.get('C').value, R=self.Fit[i].params.get('R').value, fs='none'))
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_C.append(self.Fit[i].params.get('C').value)
-                elif "'fs'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RC(w=self.df[i].w, C='none', R=self.Fit[i].params.get('R').value, fs=self.Fit[i].params.get('fs').value))
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_fs.append(self.Fit[i].params.get('R').value)
-        elif circuit == 'RQ':
-            self.fit_R = []
-            self.fit_n = []
-            self.fit_fs = []
-            self.fit_Q = []
-            for i in range(len(self.df)):
-                if "'fs'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RQ(w=self.df[i].w, R=self.Fit[i].params.get('R').value, Q='none', n=self.Fit[i].params.get('n').value, fs=self.Fit[i].params.get('fs').value))
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_fs.append(self.Fit[i].params.get('fs').value)
-                elif "'Q'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RQ(w=self.df[i].w, R=self.Fit[i].params.get('R').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, fs='none'))
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-        elif circuit == 'R-RQ':
-            self.fit_Rs = []
-            self.fit_R = []
-            self.fit_n = []
-            self.fit_fs = []
-            self.fit_Q = []
-            for i in range(len(self.df)):
-                if "'fs'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R=self.Fit[i].params.get('R').value, Q='none', n=self.Fit[i].params.get('n').value, fs=self.Fit[i].params.get('fs').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_fs.append(self.Fit[i].params.get('fs').value)
-                elif "'Q'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R=self.Fit[i].params.get('R').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, fs='none'))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-        elif circuit == 'R-RQ-RQ':
-            self.fit_Rs = []
-            self.fit_R = []
-            self.fit_n = []
-            self.fit_R2 = []
-            self.fit_n2 = []
-            self.fit_fs = []
-            self.fit_fs2 = []
-            self.fit_Q = []
-            self.fit_Q2 = []
-            for i in range(len(self.df)):
-                if "'fs'" in str(self.Fit[i].params.keys()) and "'fs2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQRQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R=self.Fit[i].params.get('R').value, Q='none', n=self.Fit[i].params.get('n').value, fs=self.Fit[i].params.get('fs').value, R2=self.Fit[i].params.get('R2').value, Q2='none', n2=self.Fit[i].params.get('n2').value, fs2=self.Fit[i].params.get('fs2').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_fs.append(self.Fit[i].params.get('fs').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_fs2.append(self.Fit[i].params.get('fs2').value)
-                elif "'Q'" in str(self.Fit[i].params.keys()) and "'fs2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQRQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R=self.Fit[i].params.get('R').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, fs='none', R2=self.Fit[i].params.get('R2').value, Q2='none', n2=self.Fit[i].params.get('n2').value, fs2=self.Fit[i].params.get('fs2').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_fs2.append(self.Fit[i].params.get('fs2').value)
-                elif "'fs'" in str(self.Fit[i].params.keys()) and "'Q2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQRQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R=self.Fit[i].params.get('R').value, Q='none', n=self.Fit[i].params.get('n').value, fs=self.Fit[i].params.get('fs').value, R2=self.Fit[i].params.get('R2').value, Q2=self.Fit[i].params.get('Q2').value, n2=self.Fit[i].params.get('n2').value, fs2='none'))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_fs.append(self.Fit[i].params.get('fs').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_Q2.append(self.Fit[i].params.get('Q2').value)
-                elif "'Q'" in str(self.Fit[i].params.keys()) and "'Q2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQRQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R=self.Fit[i].params.get('R').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, fs='none', R2=self.Fit[i].params.get('R2').value, Q2=self.Fit[i].params.get('Q2').value, n2=self.Fit[i].params.get('n2').value, fs2='none'))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_Q2.append(self.Fit[i].params.get('Q2').value)
-        elif circuit == 'L-R-RQ-RQ-RQ':
-            for i in range(len(self.df)):
-                self.circuit_fit.append(cir_LRsRQRQRQ_fit(params=self.Fit[i].params, w=self.df[i].w))
-        elif circuit == 'L-R-Q(R)-Q(R-Q(R))-Q(R)':
-            for i in range(len(self.df)):
-                self.circuit_fit.append(cir_LRQRQRQRQR_fit(params=self.Fit[i].params, w=self.df[i].w))
-        elif circuit == 'R-RC-C':
-            self.fit_Rs = []
-            self.fit_R1 = []
-            self.fit_C1 = []
-            self.fit_C = []
-            for i in range(len(self.df)):
-                self.circuit_fit.append(
-                    cir_RsRCC(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R1=self.Fit[i].params.get('R1').value, C1=self.Fit[i].params.get('C1').value, C=self.Fit[i].params.get('C').value))
-                self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                self.fit_C1.append(self.Fit[i].params.get('C1').value)
-                self.fit_C.append(self.Fit[i].params.get('C').value)
-        elif circuit == 'R-RC-Q':
-            self.fit_Rs = []
-            self.fit_R1 = []
-            self.fit_C1 = []
-            self.fit_Q = []
-            self.fit_n = []
-            for i in range(len(self.df)):
-                self.circuit_fit.append(
-                    cir_RsRCQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R1=self.Fit[i].params.get('R1').value, C1=self.Fit[i].params.get('C1').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value))
-                self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                self.fit_C1.append(self.Fit[i].params.get('C1').value)
-                self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                self.fit_n.append(self.Fit[i].params.get('n').value)
-        elif circuit == 'R-RQ-Q':
-            self.fit_Rs = []
-            self.fit_n = []
-            self.fit_R1 = []
-            self.fit_n1 = []
-            self.fit_Q = []
-            self.fit_fs1 = []
-            self.fit_Q1 = []
-            for i in range(len(self.df)):
-                if "'fs1'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, R1=self.Fit[i].params.get('R1').value, Q1='none', n1=self.Fit[i].params.get('n1').value, fs1=self.Fit[i].params.get('fs1').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_fs1.append(self.Fit[i].params.get('fs1').value)
-                elif "'Q1'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, R1=self.Fit[i].params.get('R1').value, Q1=self.Fit[i].params.get('Q1').value, n1=self.Fit[i].params.get('n1').value, fs1='none'))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_Q1.append(self.Fit[i].params.get('Q1').value)
-        elif circuit == 'R-RQ-C':
-            self.fit_Rs = []
-            self.fit_C = []
-            self.fit_R1 = []
-            self.fit_n1 = []
-            self.fit_Q1 = []
-            self.fit_fs1 = []
-            for i in range(len(self.df)):
-                if "'fs1'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQC(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, C=self.Fit[i].params.get('C').value, R1=self.Fit[i].params.get('R1').value, Q1='none', n1=self.Fit[i].params.get('n1').value, fs1=self.Fit[i].params.get('fs1').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_C.append(self.Fit[i].params.get('C').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_fs1.append(self.Fit[i].params.get('fs1').value)
-                elif "'Q1'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQC(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, C=self.Fit[i].params.get('C').value, R1=self.Fit[i].params.get('R1').value, Q1=self.Fit[i].params.get('Q1').value, n1=self.Fit[i].params.get('n1').value, fs1='none'))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_C.append(self.Fit[i].params.get('C').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_Q1.append(self.Fit[i].params.get('Q1').value)
-        elif circuit == 'R-(Q(RW))':
-            self.fit_Rs = []
-            self.fit_R = []
-            self.fit_n = []
-            self.fit_sigma = []
-            self.fit_fs = []
-            self.fit_Q = []
-            for i in range(len(self.df)):
-                if "'Q'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(cir_Randles_simplified(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R=self.Fit[i].params.get('R').value, Q=self.Fit[i].params.get('Q').value, fs='none', n=self.Fit[i].params.get('n').value, sigma=self.Fit[i].params.get('sigma').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_sigma.append(self.Fit[i].params.get('sigma').value)
-                elif "'fs'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(cir_Randles_simplified(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R=self.Fit[i].params.get('R').value, Q='none', fs=self.Fit[i].params.get('fs').value, n=self.Fit[i].params.get('n').value, sigma=self.Fit[i].params.get('sigma').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_fs.append(self.Fit[i].params.get('fs').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_sigma.append(self.Fit[i].params.get('sigma').value)
-        elif circuit == 'R-TLsQ':
-            self.fit_Rs = []
-            self.fit_Q = []
-            self.fit_n = []
-            self.fit_Ri = []
-            self.fit_L = []
-            for i in range(len(self.df)):
-                self.circuit_fit.append(
-                    cir_RsTLsQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, L=self.Fit[i].params.get('L').value, Ri=self.Fit[i].params.get('Ri').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value))
-                self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                self.fit_n.append(self.Fit[i].params.get('n').value)
-                self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                self.fit_L.append(self.Fit[i].params.get('L').value)
-        elif circuit == 'R-RQ-TLsQ':
-            self.fit_Rs = []
-            self.fit_R1 = []
-            self.fit_n1 = []
-            self.fit_Q = []
-            self.fit_n = []
-            self.fit_Ri = []
-            self.fit_L = []
-            self.fit_fs1 = []
-            self.fit_Q1 = []
-            for i in range(len(self.df)):
-                if "'fs1'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTLsQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R1=self.Fit[i].params.get('R1').value, fs1=self.Fit[i].params.get('fs1').value, n1=self.Fit[i].params.get('n1').value, L=self.Fit[i].params.get('L').value, Ri=self.Fit[i].params.get('Ri').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, Q1='none'))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_fs1.append(self.Fit[i].params.get('fs1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-                elif "'Q1'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTLsQ(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, R1=self.Fit[i].params.get('R1').value, fs1='none', n1=self.Fit[i].params.get('n1').value, L=self.Fit[i].params.get('L').value, Ri=self.Fit[i].params.get('Ri').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, Q1=self.Fit[i].params.get('Q1').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_Q1.append(self.Fit[i].params.get('Q1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-        elif circuit == 'R-TLs':
-            self.fit_Rs = []
-            self.fit_R = []
-            self.fit_n = []
-            self.fit_Ri = []
-            self.fit_L = []
-            self.fit_fs = []
-            self.fit_Q = []
-            for i in range(len(self.df)):
-                if "'fs'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsTLs(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, L=self.Fit[i].params.get('L').value, Ri=self.Fit[i].params.get('Ri').value, R=self.Fit[i].params.get('R').value, Q='none', n=self.Fit[i].params.get('n').value, fs=self.Fit[i].params.get('fs').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_fs.append(self.Fit[i].params.get('fs').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-                elif "'Q'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsTLs(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, L=self.Fit[i].params.get('L').value, Ri=self.Fit[i].params.get('Ri').value, R=self.Fit[i].params.get('R').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, fs='none'))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R.append(self.Fit[i].params.get('R').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-        elif circuit == 'R-RQ-TLs':
-            self.fit_Rs = []
-            self.fit_R1 = []
-            self.fit_n1 = []
-            self.fit_R2 = []
-            self.fit_n2 = []
-            self.fit_Ri = []
-            self.fit_L = []
-            self.fit_fs1 = []
-            self.fit_fs2 = []
-            self.fit_Q1 = []
-            self.fit_Q2 = []
-            for i in range(len(self.df)):
-                if "'fs1'" in str(self.Fit[i].params.keys()) and "'fs2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTLs(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, L=self.Fit[i].params.get('L').value, Ri=self.Fit[i].params.get('Ri').value, R1=self.Fit[i].params.get('R1').value, n1=self.Fit[i].params.get('n1').value, fs1=self.Fit[i].params.get('fs1').value, R2=self.Fit[i].params.get('R2').value, n2=self.Fit[i].params.get('n2').value, fs2=self.Fit[i].params.get('fs2').value, Q1='none', Q2='none'))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_fs1.append(self.Fit[i].params.get('fs1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_fs2.append(self.Fit[i].params.get('fs2').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-                elif "'Q1'" in str(self.Fit[i].params.keys()) and "'fs2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTLs(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, L=self.Fit[i].params.get('L').value, Ri=self.Fit[i].params.get('Ri').value, R1=self.Fit[i].params.get('R1').value, n1=self.Fit[i].params.get('n1').value, fs1='none', R2=self.Fit[i].params.get('R2').value, n2=self.Fit[i].params.get('n2').value, fs2=self.Fit[i].params.get('fs2').value, Q1=self.Fit[i].params.get('Q1').value, Q2='none'))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_Q1.append(self.Fit[i].params.get('Q1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_fs2.append(self.Fit[i].params.get('fs2').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-                elif "'fs1'" in str(self.Fit[i].params.keys()) and "'Q2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTLs(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, L=self.Fit[i].params.get('L').value, Ri=self.Fit[i].params.get('Ri').value, R1=self.Fit[i].params.get('R1').value, n1=self.Fit[i].params.get('n1').value, fs1=self.Fit[i].params.get('fs1').value, R2=self.Fit[i].params.get('R2').value, n2=self.Fit[i].params.get('n2').value, fs2='none', Q1='none', Q2=self.Fit[i].params.get('Q2').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_fs1.append(self.Fit[i].params.get('fs1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_Q2.append(self.Fit[i].params.get('Q2').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-                elif "'Q1'" in str(self.Fit[i].params.keys()) and "'Q2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTLs(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, L=self.Fit[i].params.get('L').value, Ri=self.Fit[i].params.get('Ri').value, R1=self.Fit[i].params.get('R1').value, n1=self.Fit[i].params.get('n1').value, fs1='none', R2=self.Fit[i].params.get('R2').value, n2=self.Fit[i].params.get('n2').value, fs2='none', Q1=self.Fit[i].params.get('Q1').value, Q2=self.Fit[i].params.get('Q2').value))
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_Q1.append(self.Fit[i].params.get('Q1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_Q2.append(self.Fit[i].params.get('Q2').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-        elif circuit == 'R-TLQ':
-            self.fit_L = []
-            self.fit_Rs = []
-            self.fit_Q = []
-            self.fit_n = []
-            self.fit_Rel = []
-            self.fit_Ri = []
-            for i in range(len(self.df)):
-                self.circuit_fit.append(
-                    cir_RsTLQ(w=self.df[i].w, L=self.Fit[i].params.get('L').value, Rs=self.Fit[i].params.get('Rs').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value))
-                self.fit_L.append(self.Fit[i].params.get('L').value)            
-                self.fit_Rs.append(self.Fit[i].params.get('Rs').value)            
-                self.fit_Q.append(self.Fit[i].params.get('Q').value)            
-                self.fit_n.append(self.Fit[i].params.get('n').value)            
-                self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-        elif circuit == 'R-RQ-TLQ':
-            self.fit_Rs = []
-            self.fit_L = []
-            self.fit_Q = []
-            self.fit_n = []
-            self.fit_Rel = []
-            self.fit_Ri = []
-            self.fit_R1 = []
-            self.fit_n1 = []
-            self.fit_fs1 = []
-            self.fit_Q1 = []
-            for i in range(len(self.df)):
-                if "'fs1'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTLQ(w=self.df[i].w, L=self.Fit[i].params.get('L').value, Rs=self.Fit[i].params.get('Rs').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value, R1=self.Fit[i].params.get('R1').value, n1=self.Fit[i].params.get('n1').value, fs1=self.Fit[i].params.get('fs1').value, Q1='none'))
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)                    
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_fs1.append(self.Fit[i].params.get('fs1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                elif "'Q1'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTLQ(w=self.df[i].w, L=self.Fit[i].params.get('L').value, Rs=self.Fit[i].params.get('Rs').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value, R1=self.Fit[i].params.get('R1').value, n1=self.Fit[i].params.get('n1').value, fs1='none', Q1=self.Fit[i].params.get('Q1').value))
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                    self.fit_n.append(self.Fit[i].params.get('n').value)
-                    self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)                    
-                    self.fit_Q1.append(self.Fit[i].params.get('Q1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-        elif circuit == 'R-TL':
-            self.fit_L = []
-            self.fit_Rs = []
-            self.fit_R = []
-            self.fit_fs = []
-            self.fit_n = []
-            self.fit_Rel = []
-            self.fit_Ri = []
-            for i in range(len(self.df)):
-                if "'fs'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsTL(w=self.df[i].w, L=self.Fit[i].params.get('L').value, Rs=self.Fit[i].params.get('Rs').value, R=self.Fit[i].params.get('R').value, fs=self.Fit[i].params.get('fs').value, n=self.Fit[i].params.get('n').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value, Q='none'))
-                    self.fit_L.append(self.Fit[i].params.get('L').value)                
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)                
-                    self.fit_R.append(self.Fit[i].params.get('R').value)                
-                    self.fit_fs.append(self.Fit[i].params.get('fs').value)                
-                    self.fit_n.append(self.Fit[i].params.get('n').value)                
-                    self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-        elif circuit == 'R-RQ-TL':
-            self.fit_L = []
-            self.fit_Rs = []
-            self.fit_R1 = []
-            self.fit_n1 = []
-            self.fit_R2 = []
-            self.fit_n2 = []
-            self.fit_Rel = []
-            self.fit_Ri = []
-            self.fit_Q1 = []
-            self.fit_Q2 = []
-            self.fit_fs1 = []
-            self.fit_fs2 = []
-            for i in range(len(self.df)):
-                if "'Q1'" in str(self.Fit[i].params.keys()) and "'Q2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTL(w=self.df[i].w, L=self.Fit[i].params.get('L').value, Rs=self.Fit[i].params.get('Rs').value, R1=self.Fit[i].params.get('R1').value, fs1='none', Q1=self.Fit[i].params.get('Q1').value, n1=self.Fit[i].params.get('n1').value, R2=self.Fit[i].params.get('R2').value, fs2='none', Q2=self.Fit[i].params.get('Q2').value, n2=self.Fit[i].params.get('n2').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value))
-                    self.fit_L.append(self.Fit[i].params.get('L').value)                    
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)                    
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)                    
-                    self.fit_Q1.append(self.Fit[i].params.get('Q1').value)                    
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)                    
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)                    
-                    self.fit_Q2.append(self.Fit[i].params.get('Q2').value)                    
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)                    
-                    self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                elif "'fs1'" in str(self.Fit[i].params.keys()) and "'fs2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTL(w=self.df[i].w, L=self.Fit[i].params.get('L').value, Rs=self.Fit[i].params.get('Rs').value, R1=self.Fit[i].params.get('R1').value, fs1=self.Fit[i].params.get('fs1').value, Q1='none', n1=self.Fit[i].params.get('n1').value, R2=self.Fit[i].params.get('R2').value, fs2=self.Fit[i].params.get('fs2').value, Q2='none', n2=self.Fit[i].params.get('n2').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value))
-                    self.fit_L.append(self.Fit[i].params.get('L').value)                
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)                    
-                    self.fit_fs1.append(self.Fit[i].params.get('fs1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)                    
-                    self.fit_fs2.append(self.Fit[i].params.get('fs2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                elif "'Q1'" in str(self.Fit[i].params.keys()) and "'fs2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTL(w=self.df[i].w, L=self.Fit[i].params.get('L').value, Rs=self.Fit[i].params.get('Rs').value, R1=self.Fit[i].params.get('R1').value, fs1='none', Q1=self.Fit[i].params.get('Q1').value, n1=self.Fit[i].params.get('n1').value, R2=self.Fit[i].params.get('R2').value, fs2=self.Fit[i].params.get('fs2').value, Q2='none', n2=self.Fit[i].params.get('n2').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value))
-                    self.fit_L.append(self.Fit[i].params.get('L').value)                
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)                    
-                    self.fit_Q1.append(self.Fit[i].params.get('Q1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)                    
-                    self.fit_fs2.append(self.Fit[i].params.get('fs2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                elif "'fs1'" in str(self.Fit[i].params.keys()) and "'Q2'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTL(w=self.df[i].w, L=self.Fit[i].params.get('L').value, Rs=self.Fit[i].params.get('Rs').value, R1=self.Fit[i].params.get('R1').value, fs1=self.Fit[i].params.get('fs1').value, Q1='none', n1=self.Fit[i].params.get('n1').value, R2=self.Fit[i].params.get('R2').value, fs2='none', Q2=self.Fit[i].params.get('Q2').value, n2=self.Fit[i].params.get('n2').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value))
-                    self.fit_L.append(self.Fit[i].params.get('L').value)                
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)                    
-                    self.fit_fs1.append(self.Fit[i].params.get('fs1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)                    
-                    self.fit_Q2.append(self.Fit[i].params.get('Q2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-        elif circuit == 'R-TL1Dsolid':
-            self.fit_L = []
-            self.fit_radius = []
-            self.fit_D = []
-            self.fit_Rs = []
-            self.fit_R = []
-            self.fit_Q = []
-            self.fit_n = []
-            self.fit_R_w = []
-            self.fit_n_w = []
-            self.fit_Rel = []
-            self.fit_Ri = []
-            for i in range(len(self.df)):
-                self.circuit_fit.append(
-                    cir_RsTL_1Dsolid(w=self.df[i].w, L=self.Fit[i].params.get('L').value, D=self.Fit[i].params.get('D').value, radius=self.Fit[i].params.get('radius').value, Rs=self.Fit[i].params.get('Rs').value, R=self.Fit[i].params.get('R').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, R_w=self.Fit[i].params.get('R_w').value, n_w=self.Fit[i].params.get('n_w').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value))
-                self.fit_L.append(self.Fit[i].params.get('L').value)
-                self.fit_radius.append(self.Fit[i].params.get('radius').value)
-                self.fit_D.append(self.Fit[i].params.get('D').value)            
-                self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                self.fit_R.append(self.Fit[i].params.get('R').value)
-                self.fit_Q.append(self.Fit[i].params.get('Q').value)
-                self.fit_n.append(self.Fit[i].params.get('n').value)
-                self.fit_R_w.append(self.Fit[i].params.get('R_w').value)
-                self.fit_n_w.append(self.Fit[i].params.get('n_w').value)
-                self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-        elif circuit == 'R-RQ-TL1Dsolid':
-            self.fit_L = []
-            self.fit_radius = []
-            self.fit_D = []
-            self.fit_Rs = []
-            self.fit_R1 = []
-            self.fit_n1 = []
-            self.fit_R2 = []
-            self.fit_Q2 = []
-            self.fit_n2 = []
-            self.fit_R_w = []
-            self.fit_n_w = []
-            self.fit_Rel = []
-            self.fit_Ri = []
-            self.fit_fs1 = []
-            self.fit_Q1 = []
-            for i in range(len(self.df)):
-                if "'fs1'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTL_1Dsolid(w=self.df[i].w, L=self.Fit[i].params.get('L').value, D=self.Fit[i].params.get('D').value, radius=self.Fit[i].params.get('radius').value, Rs=self.Fit[i].params.get('Rs').value, R1=self.Fit[i].params.get('R1').value, Q1='none', fs1=self.Fit[i].params.get('fs1').value, n1=self.Fit[i].params.get('n1').value, R2=self.Fit[i].params.get('R2').value, Q2=self.Fit[i].params.get('Q2').value, n2=self.Fit[i].params.get('n2').value, R_w=self.Fit[i].params.get('R_w').value, n_w=self.Fit[i].params.get('n_w').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value))
-                    self.fit_L.append(self.Fit[i].params.get('L').value)                    
-                    self.fit_radius.append(self.Fit[i].params.get('radius').value)                    
-                    self.fit_D.append(self.Fit[i].params.get('D').value)                                
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)                    
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)                    
-                    self.fit_fs1.append(self.Fit[i].params.get('fs1').value)                    
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)                    
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)                    
-                    self.fit_Q2.append(self.Fit[i].params.get('Q2').value)                    
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)                    
-                    self.fit_R_w.append(self.Fit[i].params.get('R_w').value)                    
-                    self.fit_n_w.append(self.Fit[i].params.get('n_w').value)                    
-                    self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-                elif "'Q1'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_RsRQTL_1Dsolid(w=self.df[i].w, L=self.Fit[i].params.get('L').value, D=self.Fit[i].params.get('D').value, radius=self.Fit[i].params.get('radius').value, Rs=self.Fit[i].params.get('Rs').value, R1=self.Fit[i].params.get('R1').value, Q1=self.Fit[i].params.get('Q1').value, fs1='none', n1=self.Fit[i].params.get('n1').value, R2=self.Fit[i].params.get('R2').value, Q2=self.Fit[i].params.get('Q2').value, n2=self.Fit[i].params.get('n2').value, R_w=self.Fit[i].params.get('R_w').value, n_w=self.Fit[i].params.get('n_w').value, Rel=self.Fit[i].params.get('Rel').value, Ri=self.Fit[i].params.get('Ri').value))
-                    self.fit_L.append(self.Fit[i].params.get('L').value)
-                    self.fit_radius.append(self.Fit[i].params.get('radius').value)
-                    self.fit_D.append(self.Fit[i].params.get('D').value)            
-                    self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-                    self.fit_R1.append(self.Fit[i].params.get('R1').value)
-                    self.fit_Q1.append(self.Fit[i].params.get('Q1').value)
-                    self.fit_n1.append(self.Fit[i].params.get('n1').value)
-                    self.fit_R2.append(self.Fit[i].params.get('R2').value)
-                    self.fit_Q2.append(self.Fit[i].params.get('Q2').value)
-                    self.fit_n2.append(self.Fit[i].params.get('n2').value)
-                    self.fit_R_w.append(self.Fit[i].params.get('R_w').value)
-                    self.fit_n_w.append(self.Fit[i].params.get('n_w').value)
-                    self.fit_Rel.append(self.Fit[i].params.get('Rel').value)
-                    self.fit_Ri.append(self.Fit[i].params.get('Ri').value)
-        elif circuit == 'C-RC-C':
-            self.fit_Ce = []
-            self.fit_Rb = []
-            self.fit_fsb = []
-            self.fit_Cb = []
-            for i in range(len(self.df)):
-                if "'fsb'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_C_RC_C(w=self.df[i].w, Ce=self.Fit[i].params.get('Ce').value, Cb='none', Rb=self.Fit[i].params.get('Rb').value, fsb=self.Fit[i].params.get('fsb').value))
-                    self.fit_Ce.append(self.Fit[i].params.get('Ce').value)                    
-                    self.fit_Rb.append(self.Fit[i].params.get('Rb').value)
-                    self.fit_fsb.append(self.Fit[i].params.get('fsb').value)
-                elif "'Cb'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_C_RC_C(w=self.df[i].w, Ce=self.Fit[i].params.get('Ce').value, Cb=self.Fit[i].params.get('Cb').value, Rb=self.Fit[i].params.get('Rb').value, fsb='none'))
-                    self.fit_Ce.append(self.Fit[i].params.get('Ce').value)
-                    self.fit_Rb.append(self.Fit[i].params.get('Rb').value)
-                    self.fit_Cb.append(self.Fit[i].params.get('Cb').value)
-        elif circuit == 'Q-RQ-Q':
-            self.fit_Qe = []
-            self.fit_ne = []
-            self.fit_Rb = []
-            self.fit_nb = []
-            self.fit_fsb = []
-            self.fit_Qb = []
-            for i in range(len(self.df)):
-                if "'fsb'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_Q_RQ_Q(w=self.df[i].w, Qe=self.Fit[i].params.get('Qe').value, ne=self.Fit[i].params.get('ne').value, Qb='none', Rb=self.Fit[i].params.get('Rb').value, fsb=self.Fit[i].params.get('fsb').value, nb=self.Fit[i].params.get('nb').value))
-                    self.fit_Qe.append(self.Fit[i].params.get('Qe').value)                    
-                    self.fit_ne.append(self.Fit[i].params.get('ne').value)                    
-                    self.fit_Rb.append(self.Fit[i].params.get('Rb').value)                    
-                    self.fit_fsb.append(self.Fit[i].params.get('fsb').value)
-                    self.fit_nb.append(self.Fit[i].params.get('nb').value)
-                elif "'Qb'" in str(self.Fit[i].params.keys()):
-                    self.circuit_fit.append(
-                        cir_Q_RQ_Q(w=self.df[i].w, Qe=self.Fit[i].params.get('Qe').value, ne=self.Fit[i].params.get('ne').value, Qb=self.Fit[i].params.get('Qb').value, Rb=self.Fit[i].params.get('Rb').value, fsb='none', nb=self.Fit[i].params.get('nb').value))
-                    self.fit_Qe.append(self.Fit[i].params.get('Qe').value)
-                    self.fit_ne.append(self.Fit[i].params.get('ne').value)
-                    self.fit_Rb.append(self.Fit[i].params.get('Rb').value)                    
-                    self.fit_Qb.append(self.Fit[i].params.get('Qb').value)
-                    self.fit_nb.append(self.Fit[i].params.get('nb').value)
+                self.circuit_fit.append(CIRCUIT_DICT[circuit](params=self.Fit[i].params,
+                                                              w=self.df[i].w))
         else:
             print('Circuit was not properly defined, see details described in definition')
 
     def EIS_plot(self, bode='off', fitting='off', rr='off', nyq_xlim='none', nyq_ylim='none',
                  legend='on', savefig='none'):
-        '''
+        """
         Plots Experimental and fitted impedance data in three subplots:
             a) Nyquist, b) Bode, c) relative residuals between experimental and fit
         
@@ -2660,7 +1824,7 @@ class EIS_exp:
         
         - nyq_xlim/nyq_xlim: 
           x/y-axis on nyquist plot, if not equal to 'none' state [min,max] value
-        '''
+        """
 
         if bode == 'off':
             fig = figure(dpi=120, facecolor='w', edgecolor='w')
@@ -2875,11 +2039,11 @@ class EIS_exp:
             fig.savefig(savefig) #saves figure if fix text is given
 
     # def Fit_uelectrode(self, params, circuit, D_ox, r, theta_real_red, theta_imag_red, n, T, F, R, Q='none', weight_func='modulus', nan_policy='raise'):
-    #     '''
+    #     """
     #     Fit the reductive microdisk electrode impedance repsonse following either BV or MHC infinite kientics
     #
     #     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    #     '''
+    #     """
     #     self.Fit = []
     #     self.circuit_fit = []
     #
@@ -2895,7 +2059,7 @@ class EIS_exp:
 
 
     # def uelectrode(self, params, circuit, E, alpha, n, C_ox, D_red, D_ox, r, theta_real_red, theta_real_ox, theta_imag_red, theta_imag_ox, F, R, T, weight_func='modulus', nan_policy='raise'):
-    #     '''
+    #     """
     #     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
     #
     #     Inputs
@@ -2920,7 +2084,7 @@ class EIS_exp:
     #     Returns
     #     ------------
     #     Returns the fitted impedance spectra(s) but also the fitted parameters that were used in the initial guesses. To call these use e.g. self.fit_Rs
-    #     '''
+    #     """
     #     self.Fit = []
     #     self.circuit_fit = []
     #     self.fit_Rs = []
@@ -2953,7 +2117,7 @@ class EIS_exp:
     #                 self.fit_Cred.append(self.Fit[i].params.get('C_red').value)
 
     # def uelectrode_sim_fit(self, params, circuit, E, alpha, n, C_ox, D_red, D_ox, r, theta_real_red, theta_real_ox, theta_imag_red, theta_imag_ox, F, R, T, weight_func='modulus', nan_policy='raise'):
-    #     '''
+    #     """
     #     In development..
     #
     #     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
@@ -2991,13 +2155,13 @@ class EIS_exp:
     #     Returns
     #     ------------
     #     The fitted impedance spectra(s) but also the fitted parameters that were used in the initial guesses. To call these use e.g. self.fit_Rs
-    #     '''
+    #     """
     #     self.Fit = minimize(leastsq_errorfunc_uelectrode, params, method='leastsq', args=(self.w, self.re, self.im, circuit, weight_func, E, alpha, n, C_ox, D_red, D_ox, r, theta_real_red, theta_real_ox, theta_imag_red, theta_imag_ox, F, R, T), nan_policy=nan_policy, maxfev=9999990)
     #     print(report_fit(self.Fit))
     
 
     def plot_Cdl_E(self, interface, BET_Area, m_electrode):
-        '''
+        """
         Normalizing Q to C_eff or Cdl using either norm_nonFara_Q_C() or norm_Fara_Q_C()
         
         Refs:
@@ -3016,7 +2180,7 @@ class EIS_exp:
         Inputs
         ---------
         C_eff/C_dl = Normalized Double-layer capacitance measured from impedance [uF/cm2] (normalized by norm_nonFara_Q_C() or norm_Fara_Q_C())
-        '''
+        """
         fig = figure(dpi=120, facecolor='w', edgecolor='w')
         fig.subplots_adjust(left=0.1, right=0.95, hspace=0.5, bottom=0.1, top=0.95)
         ax = fig.add_subplot(111)
@@ -3043,32 +2207,12 @@ class EIS_exp:
 
 
 class EIS_sim:
-    '''
+    """
     Simulates and plots Electrochemical Impedance Spectroscopy based-on build-in equivalent cirucit models
     
     Kristian B. Knudsen (kknu@berkeley.edu || kristianbknudsen@gmail.com)    
 
-    Following circuits are implemented:
-        - RC
-        - RQ
-        - R-RQ
-        - R-RQ-RQ
-        - R-Q
-        - R-RQ-Q
-        - R-(Q(RW))
-        - C-RC-C
-        - Q-RQ-Q
-        - RC-RC-ZD
-        - R-TLsQ
-        - R-RQ-TLsQ
-        - R-TLs
-        - R-RQ-TLs
-        - R-TLQ
-        - R-RQ-TLQ
-        - R-TL
-        - R-RQ-TL
-        - R-TL1Dsolid (reactive interface with 1D solid-state diffusion)
-        - R-RQ-TL1Dsolid
+    Implemented circuits can be found in CIRCUIT_DICT in the circuits file
     
     Inputs
     --------
@@ -3085,7 +2229,7 @@ class EIS_sim:
         
         - 'im' = im vs. log(freq)
         - 'log_im' = log(im) vs. log(freq)
-    '''
+    """
     def __init__(self, circuit, frange, bode='off', nyq_xlim='none', nyq_ylim='none', legend='on', savefig='none'):
         self.f = frange
         self.w = 2*np.pi*frange
@@ -3180,7 +2324,7 @@ class EIS_sim:
                     nyq_ylim='none',
                     legend='on',
                     savefig='none'):
-        '''
+        """
         This function fits simulations with a selected circuit. This function is mainly used to
         test fitting functions prior to being used on experimental data
         
@@ -3188,27 +2332,7 @@ class EIS_sim:
         
         Inputs
         ------------
-        - Circuit: Equivlaent circuit models
-            - RC
-            - RQ
-            - R-RQ
-            - R-RQ-RQ
-            - R-Q
-            - R-RQ-Q
-            - R-(Q(RW))
-            - C-RC-C
-            - Q-RQ-Q
-            - RC-RC-ZD
-            - R-TLsQ
-            - R-RQ-TLsQ
-            - R-TLs
-            - R-RQ-TLs
-            - R-TLQ
-            - R-RQ-TLQ
-            - R-TL
-            - R-RQ-TL
-            - R-TL1Dsolid (reactive interface with 1D solid-state diffusion)
-            - R-RQ-TL1Dsolid
+        - Circuit: Equivlaent circuit models are defined in the CIRCUIT_DICT of the circuits file
 
         - weight_func = Weight function, Three options:
             - modulus (default)
@@ -3234,795 +2358,16 @@ class EIS_sim:
         ------------
         The fitted impedance spectra(s) but also the fitted parameters that were used in the initial
          guesses. To call these use e.g. self.fit_Rs
-        '''
+        """
         self.Fit = minimize(leastsq_errorfunc, params, method='leastsq',
                             args=(self.w, self.re, self.im, circuit, weight_func),
                             max_nfev=99999, nan_policy=nan_policy)
         print(report_fit(self.Fit))
 
-        if circuit == 'C':
-            self.circuit_fit = elem_C(w=self.w, C=self.Fit.params.get('C').value)
-            self.fit_C = []
-            self.fit_C.append(self.Fit.params.get('C').value)
-        elif circuit == 'Q':
-            self.circuit_fit = elem_Q(w=self.w, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value)
-            self.fit_Q = []
-            self.fit_Q.append(self.Fit.params.get('Q').value)
-            self.fit_n = []
-            self.fit_n.append(self.Fit.params.get('n').value)
-        elif circuit == 'R-C':
-            self.circuit_fit = cir_RsC(w=self.w, Rs=self.Fit.params.get('Rs').value, C=self.Fit.params.get('C').value)
-            self.fit_Rs = []
-            self.fit_Rs.append(self.Fit.params.get('Rs').value)
-            self.fit_C = []
-            self.fit_C.append(self.Fit.params.get('C').value)
-        elif circuit == 'R-Q':
-            self.circuit_fit = cir_RsQ(w=self.w, Rs=self.Fit.params.get('Rs').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value)
-            self.fit_Rs = []
-            self.fit_Rs.append(self.Fit.params.get('Rs').value)
-            self.fit_Q = []
-            self.fit_Q.append(self.Fit.params.get('Q').value)
-            self.fit_n = []
-            self.fit_n.append(self.Fit.params.get('n').value)
-        elif circuit == 'RC':
-            if "'C'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RC(w=self.w, C=self.Fit.params.get('C').value, R=self.Fit.params.get('R').value, fs='none')
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_C = []
-                self.fit_C.append(self.Fit.params.get('C').value)
-            elif "'fs'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RC(w=self.w, C='none', R=self.Fit.params.get('R').value, fs=self.Fit.params.get('fs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_fs = []
-                self.fit_fs.append(self.Fit.params.get('R').value)
-        elif circuit == 'RQ':
-            if "'fs'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RQ(w=self.w, R=self.Fit.params.get('R').value, Q='none', n=self.Fit.params.get('n').value, fs=self.Fit.params.get('fs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_fs = []
-                self.fit_fs.append(self.Fit.params.get('fs').value)
-            elif "'Q'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RQ(w=self.w, R=self.Fit.params.get('R').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, fs='none')
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-        elif circuit == 'R-RQ':
-            if "'fs'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQ(w=self.w, Rs=self.Fit.params.get('Rs').value, R=self.Fit.params.get('R').value, Q='none', n=self.Fit.params.get('n').value, fs=self.Fit.params.get('fs').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_fs = []
-                self.fit_fs.append(self.Fit.params.get('fs').value)
-            elif "'Q'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQ(w=self.w, Rs=self.Fit.params.get('Rs').value, R=self.Fit.params.get('R').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, fs='none')
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-        elif circuit == 'R-RQ-RQ':
-            if "'fs'" in str(self.Fit.params.keys()) and "'fs2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQRQ(w=self.w, Rs=self.Fit.params.get('Rs').value,
-                                              R=self.Fit.params.get('R').value, Q='none',
-                                              n=self.Fit.params.get('n').value,
-                                              fs=self.Fit.params.get('fs').value,
-                                              R2=self.Fit.params.get('R2').value,
-                                              Q2='none', n2=self.Fit.params.get('n2').value,
-                                              fs2=self.Fit.params.get('fs2').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_fs = []
-                self.fit_fs.append(self.Fit.params.get('fs').value)
-                self.fit_R2 =[]
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_fs2 = []
-                self.fit_fs2.append(self.Fit.params.get('fs2').value)
-            elif "'Q'" in str(self.Fit.params.keys()) and "'fs2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQRQ(w=self.w, Rs=self.Fit.params.get('Rs').value,
-                                              R=self.Fit.params.get('R').value,
-                                              Q=self.Fit.params.get('Q').value,
-                                              n=self.Fit.params.get('n').value,
-                                              fs='none', R2=self.Fit.params.get('R2').value,
-                                              Q2='none', n2=self.Fit.params.get('n2').value,
-                                              fs2=self.Fit.params.get('fs2').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_fs2 = []
-                self.fit_fs2.append(self.Fit.params.get('fs2').value)
-            elif "'fs'" in str(self.Fit.params.keys()) and "'Q2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQRQ(w=self.w, Rs=self.Fit.params.get('Rs').value,
-                                              R=self.Fit.params.get('R').value, Q='none',
-                                              n=self.Fit.params.get('n').value,
-                                              fs=self.Fit.params.get('fs').value,
-                                              R2=self.Fit.params.get('R2').value,
-                                              Q2=self.Fit.params.get('Q2').value,
-                                              n2=self.Fit.params.get('n2').value, fs2='none')
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_fs = []
-                self.fit_fs.append(self.Fit.params.get('fs').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_Q2 = []
-                self.fit_Q2.append(self.Fit.params.get('Q2').value)
-            elif "'Q'" in str(self.Fit.params.keys()) and "'Q2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQRQ(w=self.w, Rs=self.Fit.params.get('Rs').value,
-                                              R=self.Fit.params.get('R').value,
-                                              Q=self.Fit.params.get('Q').value,
-                                              n=self.Fit.params.get('n').value,
-                                              fs='none', R2=self.Fit.params.get('R2').value,
-                                              Q2=self.Fit.params.get('Q2').value,
-                                              n2=self.Fit.params.get('n2').value, fs2='none')
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_Q2 = []
-                self.fit_Q2.append(self.Fit.params.get('Q2').value)
-        elif circuit == 'L-R-RQ-RQ-RQ':
-            self.circuit_fit = cir_LRsRQRQRQ_fit(params=self.Fit.params, w=self.w)
-        elif circuit == 'R-RC-C':
-            self.circuit_fit = cir_RsRCC(w=self.w, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, C1=self.Fit.params.get('C1').value, C=self.Fit.params.get('C').value)
-            self.fit_Rs = []
-            self.fit_Rs.append(self.Fit.params.get('Rs').value)
-            self.fit_R1 = []
-            self.fit_R1.append(self.Fit.params.get('R1').value)
-            self.fit_C1 = []
-            self.fit_C1.append(self.Fit.params.get('C1').value)
-            self.fit_C = []
-            self.fit_C.append(self.Fit.params.get('C').value)
-        elif circuit == 'R-RC-Q':
-            self.circuit_fit = cir_RsRCQ(w=self.w, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, C1=self.Fit.params.get('C1').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value)
-            self.fit_Rs = []
-            self.fit_Rs.append(self.Fit.params.get('Rs').value)
-            self.fit_R1 =[]
-            self.fit_R1.append(self.Fit.params.get('R1').value)
-            self.fit_C1 =[]
-            self.fit_C1.append(self.Fit.params.get('C1').value)
-            self.fit_Q = []
-            self.fit_Q.append(self.Fit.params.get('Q').value)
-            self.fit_n = []
-            self.fit_n.append(self.Fit.params.get('n').value)
-        elif circuit == 'R-RQ-Q':
-            if "'fs1'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQQ(w=self.w, Rs=self.Fit.params.get('Rs').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, R1=self.Fit.params.get('R1').value, Q1='none', n1=self.Fit.params.get('n1').value, fs1=self.Fit.params.get('fs1').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_fs1 = []
-                self.fit_fs1.append(self.Fit.params.get('fs1').value)
-            if "'Q1'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQQ(w=self.w, Rs=self.Fit.params.get('Rs').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, R1=self.Fit.params.get('R1').value, Q1=self.Fit.params.get('Q1').value, n1=self.Fit.params.get('n1').value, fs1='none')
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_fQ = []
-                self.fit_Q1.append(self.Fit.params.get('Q1').value)
-        elif circuit == 'R-RQ-C':
-            if "'fs1'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQC(w=self.w, Rs=self.Fit.params.get('Rs').value, C=self.Fit.params.get('C').value, R1=self.Fit.params.get('R1').value, Q1='none', n1=self.Fit.params.get('n1').value, fs1=self.Fit.params.get('fs1').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_C = []
-                self.fit_C.append(self.Fit.params.get('C').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_fs1 = []
-                self.fit_fs1.append(self.Fit.params.get('fs1').value)
-            elif "'Q1'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQC(w=self.df.w, Rs=self.Fit.params.get('Rs').value, C=self.Fit.params.get('C').value, R1=self.Fit.params.get('R1').value, Q1=self.Fit.params.get('Q1').value, n1=self.Fi.params.get('n1').value, fs1='none')
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_C = []
-                self.fit_C.append(self.Fit.params.get('C').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_Q1 = []
-                self.fit_Q1.append(self.Fit.params.get('Q1').value)
-        elif circuit == 'R-(Q(RW))':
-            if "'Q'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_Randles_simplified(w=self.w, Rs=self.Fit.params.get('Rs').value, R=self.Fit.params.get('R').value, Q=self.Fit.params.get('Q').value, fs='none', n=self.Fit.params.get('n').value, sigma=self.Fit.params.get('sigma').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_sigma = []
-                self.fit_sigma.append(self.Fit.params.get('sigma').value)
-            elif "'fs'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_Randles_simplified(w=self.w, Rs=self.Fit.params.get('Rs').value, R=self.Fit.params.get('R').value, Q='none', fs=self.Fit.params.get('fs').value, n=self.Fit.params.get('n').value, sigma=self.Fit.params.get('sigma').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_fs = []
-                self.fit_fs.append(self.Fit.params.get('fs').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_sigma = []
-                self.fit_sigma.append(self.Fit.params.get('sigma').value)
-        elif circuit == 'R-TLsQ':
-            self.circuit_fit = cir_RsTLsQ(w=self.w, Rs=self.Fit.params.get('Rs').value, L=self.Fit.params.get('L').value, Ri=self.Fit.params.get('Ri').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value)
-            self.fit_Rs = []
-            self.fit_Rs.append(self.Fit.params.get('Rs').value)
-            self.fit_Q = []
-            self.fit_Q.append(self.Fit.params.get('Q').value)
-            self.fit_n = []
-            self.fit_n.append(self.Fit.params.get('n').value)
-            self.fit_Ri = []
-            self.fit_Ri.append(self.Fit.params.get('Ri').value)
-            self.fit_L = []
-            self.fit_L.append(self.Fit.params.get('L').value)
-        elif circuit == 'R-RQ-TLsQ':
-            if "'fs1'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTLsQ(w=self.w, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, fs1=self.Fit.params.get('fs1').value, n1=self.Fit.params.get('n1').value, L=self.Fit.params.get('L').value, Ri=self.Fit.params.get('Ri').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, Q1='none')
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_fs1 = []
-                self.fit_fs1.append(self.Fit.params.get('fs1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-            elif "'Q1'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTLsQ(w=self.w, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, fs1='none', n1=self.Fit.params.get('n1').value, L=self.Fit.params.get('L').value, Ri=self.Fit.params.get('Ri').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, Q1=self.Fit.params.get('Q1').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_Q1 = []
-                self.fit_Q1.append(self.Fit.params.get('Q1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-        elif circuit == 'R-TLs':
-            if "'fs'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsTLs(w=self.w, Rs=self.Fit.params.get('Rs').value, L=self.Fit.params.get('L').value, Ri=self.Fit.params.get('Ri').value, R=self.Fit.params.get('R').value, Q='none', n=self.Fit.params.get('n').value, fs=self.Fit.params.get('fs').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_fs = []
-                self.fit_fs.append(self.Fit.params.get('fs').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-            elif "'Q'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsTLs(w=self.w, Rs=self.Fit.params.get('Rs').value, L=self.Fit.params.get('L').value, Ri=self.Fit.params.get('Ri').value, R=self.Fit.params.get('R').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, fs='none')
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-        elif circuit == 'R-RQ-TLs':
-            if "'fs1'" in str(self.Fit.params.keys()) and "'fs2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTLs(w=self.w, Rs=self.Fit.params.get('Rs').value, L=self.Fit.params.get('L').value, Ri=self.Fit.params.get('Ri').value, R1=self.Fit.params.get('R1').value, n1=self.Fit.params.get('n1').value, fs1=self.Fit.params.get('fs1').value, R2=self.Fit.params.get('R2').value, n2=self.Fit.params.get('n2').value, fs2=self.Fit.params.get('fs2').value, Q1='none', Q2='none')
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_fs1 = []
-                self.fit_fs1.append(self.Fit.params.get('fs1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_fs2 = []
-                self.fit_fs2.append(self.Fit.params.get('fs2').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-            elif "'Q1'" in str(self.Fit.params.keys()) and "'fs2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTLs(w=self.w, Rs=self.Fit.params.get('Rs').value, L=self.Fit.params.get('L').value, Ri=self.Fit.params.get('Ri').value, R1=self.Fit.params.get('R1').value, n1=self.Fit.params.get('n1').value, fs1='none', R2=self.Fit.params.get('R2').value, n2=self.Fit.params.get('n2').value, fs2=self.Fit.params.get('fs2').value, Q1=self.Fit.params.get('Q1').value, Q2='none')
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_Q1 = []
-                self.fit_Q1.append(self.Fit.params.get('Q1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_fs2 = []
-                self.fit_fs2.append(self.Fit.params.get('fs2').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-            elif "'fs1'" in str(self.Fit.params.keys()) and "'Q2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTLs(w=self.w, Rs=self.Fit.params.get('Rs').value, L=self.Fit.params.get('L').value, Ri=self.Fit.params.get('Ri').value, R1=self.Fit.params.get('R1').value, n1=self.Fit.params.get('n1').value, fs1=self.Fit.params.get('fs1').value, R2=self.Fit.params.get('R2').value, n2=self.Fit.params.get('n2').value, fs2='none', Q1='none', Q2=self.Fit.params.get('Q2').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_fs1 = []
-                self.fit_fs1.append(self.Fit.params.get('fs1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_Q2 = []
-                self.fit_Q2.append(self.Fit.params.get('Q2').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-            elif "'Q1'" in str(self.Fit.params.keys()) and "'Q2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTLs(w=self.w, Rs=self.Fit.params.get('Rs').value, L=self.Fit.params.get('L').value, Ri=self.Fit.params.get('Ri').value, R1=self.Fit.params.get('R1').value, n1=self.Fit.params.get('n1').value, fs1='none', R2=self.Fit.params.get('R2').value, n2=self.Fit.params.get('n2').value, fs2='none', Q1=self.Fit.params.get('Q1').value, Q2=self.Fit.params.get('Q2').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_Q1 = []
-                self.fit_Q1.append(self.Fit.params.get('Q1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_Q2 = []
-                self.fit_Q2.append(self.Fit.params.get('Q2').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-        elif circuit == 'R-TLQ':
-            self.circuit_fit = cir_RsTLQ(w=self.w, L=self.Fit.params.get('L').value, Rs=self.Fit.params.get('Rs').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value)
-            self.fit_L = []
-            self.fit_L.append(self.Fit.params.get('L').value)
-            self.fit_Rs = []
-            self.fit_Rs.append(self.Fit.params.get('Rs').value)
-            self.fit_Q = []
-            self.fit_Q.append(self.Fit.params.get('Q').value)
-            self.fit_n = []
-            self.fit_n.append(self.Fit.params.get('n').value)
-            self.fit_Rel = []
-            self.fit_Rel.append(self.Fit.params.get('Rel').value)
-            self.fit_Ri = []
-            self.fit_Ri.append(self.Fit.params.get('Ri').value)
-        elif circuit == 'R-RQ-TLQ':
-            if "'fs1'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTLQ(w=self.w, L=self.Fit.params.get('L').value, Rs=self.Fit.params.get('Rs').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value, R1=self.Fit.params.get('R1').value, n1=self.Fit.params.get('n1').value, fs1=self.Fit.params.get('fs1').value, Q1='none')
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_fs1 = []
-                self.fit_fs1.append(self.Fit.params.get('fs1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-            elif "'Q1'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTLQ(w=self.w, L=self.Fit.params.get('L').value, Rs=self.Fit.params.get('Rs').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value, R1=self.Fit.params.get('R1').value, n1=self.Fit.params.get('n1').value, fs1='none', Q1=self.Fit.params.get('Q1').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_Q1 = []
-                self.fit_Q1.append(self.Fit.params.get('Q1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-        elif circuit == 'R-TL':
-            if "'fs'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsTL(w=self.w, L=self.Fit.params.get('L').value, Rs=self.Fit.params.get('Rs').value, R=self.Fit.params.get('R').value, fs=self.Fit.params.get('fs').value, n=self.Fit.params.get('n').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value, Q='none')
-                self.fit_L = []                
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_Rs = []                
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_fs = []
-                self.fit_fs.append(self.Fit.params.get('fs').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-            elif "'Q'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsTL(w=self.w, L=self.Fit.params.get('L').value, Rs=self.Fit.params.get('Rs').value, R=self.Fit.params.get('R').value, fs='none', n=self.Fit.params.get('n').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value, Q=self.Fit.params.get('Q').value)
-                self.fit_L = []                
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_Rs = []                
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-        elif circuit == 'R-RQ-TL':
-            if "'Q1'" in str(self.Fit.params.keys()) and "'Q2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTL(w=self.w, L=self.Fit.params.get('L').value, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, fs1='none', Q1=self.Fit.params.get('Q1').value, n1=self.Fit.params.get('n1').value, R2=self.Fit.params.get('R2').value, fs2='none', Q2=self.Fit.params.get('Q2').value, n2=self.Fit.params.get('n2').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value)
-                self.fit_L = []                
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_Rs = []                
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_Q1 = []
-                self.fit_Q1.append(self.Fit.params.get('Q1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_Q2 = []
-                self.fit_Q2.append(self.Fit.params.get('Q2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-            elif "'fs1'" in str(self.Fit.params.keys()) and "'fs2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTL(w=self.w, L=self.Fit.params.get('L').value, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, fs1=self.Fit.params.get('fs1').value, Q1='none', n1=self.Fit.params.get('n1').value, R2=self.Fit.params.get('R2').value, fs2=self.Fit.params.get('fs2').value, Q2='none', n2=self.Fit.params.get('n2').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value)
-                self.fit_L = []                
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_Rs = []                
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_fs1 = []
-                self.fit_fs1.append(self.Fit.params.get('fs1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_fs2 = []
-                self.fit_fs2.append(self.Fit.params.get('fs2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-            elif "'Q1'" in str(self.Fit.params.keys()) and "'fs2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTL(w=self.w, L=self.Fit.params.get('L').value, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, fs1='none', Q1=self.Fit.params.get('Q1').value, n1=self.Fit.params.get('n1').value, R2=self.Fit.params.get('R2').value, fs2=self.Fit.params.get('fs2').value, Q2='none', n2=self.Fit.params.get('n2').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value)
-                self.fit_L = []                
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_Rs = []                
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_Q1 = []
-                self.fit_Q1.append(self.Fit.params.get('Q1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_fs2 = []
-                self.fit_fs2.append(self.Fit.params.get('fs2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-            elif "'fs1'" in str(self.Fit.params.keys()) and "'Q2'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTL(w=self.w, L=self.Fit.params.get('L').value, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, fs1=self.Fit.params.get('fs1').value, Q1='none', n1=self.Fit.params.get('n1').value, R2=self.Fit.params.get('R2').value, fs2='none', Q2=self.Fit.params.get('Q2').value, n2=self.Fit.params.get('n2').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value)
-                self.fit_L = []                
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_Rs = []                
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_fs1 = []
-                self.fit_fs1.append(self.Fit.params.get('fs1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_Q2 = []
-                self.fit_Q2.append(self.Fit.params.get('Q2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-        elif circuit == 'R-TL1Dsolid':
-                self.circuit_fit = cir_RsTL_1Dsolid(w=self.w, L=self.Fit.params.get('L').value, D=self.Fit.params.get('D').value, radius=self.Fit.params.get('radius').value, Rs=self.Fit.params.get('Rs').value, R=self.Fit.params.get('R').value, Q=self.Fit.params.get('Q').value, n=self.Fit.params.get('n').value, R_w=self.Fit.params.get('R_w').value, n_w=self.Fit.params.get('n_w').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_radius = []
-                self.fit_radius.append(self.Fit.params.get('radius').value)
-                self.fit_D = []
-                self.fit_D.append(self.Fit.params.get('D').value)            
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R = []
-                self.fit_R.append(self.Fit.params.get('R').value)
-                self.fit_Q = []
-                self.fit_Q.append(self.Fit.params.get('Q').value)
-                self.fit_n = []
-                self.fit_n.append(self.Fit.params.get('n').value)
-                self.fit_R_w = []
-                self.fit_R_w.append(self.Fit.params.get('R_w').value)
-                self.fit_n_w = []
-                self.fit_n_w.append(self.Fit.params.get('n_w').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-        elif circuit == 'R-RQ-TL1Dsolid':
-            if "'fs1'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTL_1Dsolid(w=self.w, L=self.Fit.params.get('L').value, D=self.Fit.params.get('D').value, radius=self.Fit.params.get('radius').value, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, Q1='none', fs1=self.Fit.params.get('fs1').value, n1=self.Fit.params.get('n1').value, R2=self.Fit.params.get('R2').value, Q2=self.Fit.params.get('Q2').value, n2=self.Fit.params.get('n2').value, R_w=self.Fit.params.get('R_w').value, n_w=self.Fit.params.get('n_w').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_radius = []
-                self.fit_radius.append(self.Fit.params.get('radius').value)
-                self.fit_D = []
-                self.fit_D.append(self.Fit.params.get('D').value)            
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_fs1 = []
-                self.fit_fs1.append(self.Fit.params.get('fs1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_Q2 = []
-                self.fit_Q2.append(self.Fit.params.get('Q2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_R_w = []
-                self.fit_R_w.append(self.Fit.params.get('R_w').value)
-                self.fit_n_w = []
-                self.fit_n_w.append(self.Fit.params.get('n_w').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-            elif "'Q1'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RsRQTL_1Dsolid(w=self.w, L=self.Fit.params.get('L').value, D=self.Fit.params.get('D').value, radius=self.Fit.params.get('radius').value, Rs=self.Fit.params.get('Rs').value, R1=self.Fit.params.get('R1').value, Q1=self.Fit.params.get('Q1').value, fs1='none', n1=self.Fit.params.get('n1').value, R2=self.Fit.params.get('R2').value, Q2=self.Fit.params.get('Q2').value, n2=self.Fit.params.get('n2').value, R_w=self.Fit.params.get('R_w').value, n_w=self.Fit.params.get('n_w').value, Rel=self.Fit.params.get('Rel').value, Ri=self.Fit.params.get('Ri').value)
-                self.fit_L = []
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_radius = []
-                self.fit_radius.append(self.Fit.params.get('radius').value)
-                self.fit_D = []
-                self.fit_D.append(self.Fit.params.get('D').value)            
-                self.fit_Rs = []
-                self.fit_Rs.append(self.Fit.params.get('Rs').value)
-                self.fit_R1 = []
-                self.fit_R1.append(self.Fit.params.get('R1').value)
-                self.fit_Q1 = []
-                self.fit_Q1.append(self.Fit.params.get('Q1').value)
-                self.fit_n1 = []
-                self.fit_n1.append(self.Fit.params.get('n1').value)
-                self.fit_R2 = []
-                self.fit_R2.append(self.Fit.params.get('R2').value)
-                self.fit_Q2 = []
-                self.fit_Q2.append(self.Fit.params.get('Q2').value)
-                self.fit_n2 = []
-                self.fit_n2.append(self.Fit.params.get('n2').value)
-                self.fit_R_w = []
-                self.fit_R_w.append(self.Fit.params.get('R_w').value)
-                self.fit_n_w = []
-                self.fit_n_w.append(self.Fit.params.get('n_w').value)
-                self.fit_Rel = []
-                self.fit_Rel.append(self.Fit.params.get('Rel').value)
-                self.fit_Ri = []
-                self.fit_Ri.append(self.Fit.params.get('Ri').value)
-        elif circuit == 'C-RC-C':
-            if "'fsb'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_C_RC_C(w=self.w, Ce=self.Fit.params.get('Ce').value, Cb='none', Rb=self.Fit.params.get('Rb').value, fsb=self.Fit.params.get('fsb').value)
-                self.fit_Ce = []
-                self.fit_Ce.append(self.Fit.params.get('Ce').value)
-                self.fit_Rb = []
-                self.fit_Rb.append(self.Fit.params.get('Rb').value)
-                self.fit_fsb = []
-                self.fit_fsb.append(self.Fit.params.get('fsb').value)
-            elif "'Cb'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_C_RC_C(w=self.w, Ce=self.Fit.params.get('Ce').value, Cb=self.Fit.params.get('Cb').value, Rb=self.Fit.params.get('Rb').value, fsb='none')
-                self.fit_Ce = []
-                self.fit_Ce.append(self.Fit.params.get('Ce').value)
-                self.fit_Rb = []
-                self.fit_Rb.append(self.Fit.params.get('Rb').value)
-                self.fit_Cb = []
-                self.fit_Cb.append(self.Fit.params.get('Cb').value)
-        elif circuit == 'Q-RQ-Q':
-            if "'fsb'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_Q_RQ_Q(w=self.w, Qe=self.Fit.params.get('Qe').value, ne=self.Fit.params.get('ne').value, Qb='none', Rb=self.Fit.params.get('Rb').value, fsb=self.Fit.params.get('fsb').value, nb=self.Fit.params.get('nb').value)
-                self.fit_Qe = []
-                self.fit_Qe.append(self.Fit.params.get('Qe').value)
-                self.fit_ne = []
-                self.fit_ne.append(self.Fit.params.get('ne').value)
-                self.fit_Rb = []
-                self.fit_Rb.append(self.Fit.params.get('Rb').value)
-                self.fit_fsb = []
-                self.fit_fsb.append(self.Fit.params.get('fsb').value)
-                self.fit_nb = []
-                self.fit_nb.append(self.Fit.params.get('nb').value)
-            elif "'Qb'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_Q_RQ_Q(w=self.w, Qe=self.Fit.params.get('Qe').value, ne=self.Fit.params.get('ne').value, Qb=self.Fit.params.get('Qb').value, Rb=self.Fit.params.get('Rb').value, fsb='none', nb=self.Fit.params.get('nb').value)
-                self.fit_Qe = []
-                self.fit_Qe.append(self.Fit.params.get('Qe').value)
-                self.fit_ne = []
-                self.fit_ne.append(self.Fit.params.get('ne').value)
-                self.fit_Rb = []
-                self.fit_Rb.append(self.Fit.params.get('Rb').value)
-                self.fit_Qb = []
-                self.fit_Qb.append(self.Fit.params.get('Qb').value)
-                self.fit_nb = []
-                self.fit_nb.append(self.Fit.params.get('nb').value)
-        elif circuit == 'RC-RC-ZD':
-            self.fit_L = []
-            self.fit_D_s = []
-            self.fit_u1 = []
-            self.fit_u2 = []
-            self.fit_Cb = []
-            self.fit_Rb = []
-            self.fit_fsb = []
-            self.fit_Ce = []
-            self.fit_Re = []
-            self.fit_fse = []
-            if "'fsb'" in str(self.Fit.params.keys()) and "'fse'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RCRCZD(w=self.w, L=self.Fit.params.get('L').value, D_s=self.Fit.params.get('D_s').value, u1=self.Fit.params.get('u1').value, u2=self.Fit.params.get('u2').value, Cb='none', Rb=self.Fit.params.get('Rb').value, fsb=self.Fit.params.get('fsb').value, Ce='none', Re=self.Fit.params.get('Re').value, fse=self.Fit.params.get('fse').value)
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_D_s.append(self.Fit.params.get('D_s').value)
-                self.fit_u1.append(self.Fit.params.get('u1').value)
-                self.fit_u2.append(self.Fit.params.get('u2').value)
-                self.fit_Rb.append(self.Fit.params.get('Rb').value)
-                self.fit_Re.append(self.Fit.params.get('Re').value)
-                self.fit_fsb.append(self.Fit.params.get('fsb').value)
-                self.fit_fse.append(self.Fit.params.get('fse').value)
-            elif "'Cb'" in str(self.Fit.params.keys()) and "'Ce'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RCRCZD(w=self.w, L=self.Fit.params.get('L').value, D_s=self.Fit.params.get('D_s').value, u1=self.Fit.params.get('u1').value, u2=self.Fit.params.get('u2').value, Cb=self.Fit.params.get('Cb').value, Rb=self.Fit.params.get('Rb').value, fsb='none', Ce=self.Fit.params.get('Ce').value, Re=self.Fit.params.get('Re').value, fse='none')
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_D_s.append(self.Fit.params.get('D_s').value)
-                self.fit_u1.append(self.Fit.params.get('u1').value)
-                self.fit_u2.append(self.Fit.params.get('u2').value)
-                self.fit_Rb.append(self.Fit.params.get('Rb').value)
-                self.fit_Re.append(self.Fit.params.get('Re').value)
-                self.fit_Cb.append(self.Fit.params.get('Cb').value)
-                self.fit_Ce.append(self.Fit.params.get('Ce').value)                
-            elif "'Cb'" in str(self.Fit.params.keys()) and "'fse'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RCRCZD(w=self.w, L=self.Fit.params.get('L').value, D_s=self.Fit.params.get('D_s').value, u1=self.Fit.params.get('u1').value, u2=self.Fit.params.get('u2').value, Cb=self.Fit.params.get('Cb').value, Rb=self.Fit.params.get('Rb').value, fsb='none', Ce='none', Re=self.Fit.params.get('Re').value, fse=self.Fit.params.get('fse').value)
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_D_s.append(self.Fit.params.get('D_s').value)
-                self.fit_u1.append(self.Fit.params.get('u1').value)
-                self.fit_u2.append(self.Fit.params.get('u2').value)
-                self.fit_Rb.append(self.Fit.params.get('Rb').value)
-                self.fit_Re.append(self.Fit.params.get('Re').value)
-                self.fit_Cb.append(self.Fit.params.get('Cb').value)
-                self.fit_fse.append(self.Fit.params.get('fse').value)
-            elif "'fsb'" in str(self.Fit.params.keys()) and "'Ce'" in str(self.Fit.params.keys()):
-                self.circuit_fit = cir_RCRCZD(w=self.w, L=self.Fit.params.get('L').value, D_s=self.Fit.params.get('D_s').value, u1=self.Fit.params.get('u1').value, u2=self.Fit.params.get('u2').value, Cb=self.Fit.params.get('Cb').value, Rb='none', fsb=self.Fit.params.get('fsb').value, Ce=self.Fit.params.get('Ce').value, Re=self.Fit.params.get('Re').value, fse='none')
-                self.fit_L.append(self.Fit.params.get('L').value)
-                self.fit_D_s.append(self.Fit.params.get('D_s').value)
-                self.fit_u1.append(self.Fit.params.get('u1').value)
-                self.fit_u2.append(self.Fit.params.get('u2').value)
-                self.fit_Rb.append(self.Fit.params.get('Rb').value)
-                self.fit_Re.append(self.Fit.params.get('Re').value)
-                self.fit_fsb.append(self.Fit.params.get('fsb').value)
-                self.fit_Ce.append(self.Fit.params.get('Ce').value)  
+        if circuit in list(CIRCUIT_DICT.keys()):
+            self.circuit_fit = CIRCUIT_DICT[circuit](params=self.Fit.params, w=self.w)
         else:
-            print('Circuit is not properly defined, see details described in definition')
+            raise ValueError(f'circuit {circuit} is not a valid option')
 
         fig = figure(figsize=(6, 4.5), dpi=120, facecolor='w', edgecolor='k')
         fig.subplots_adjust(left=0.1, right=0.95, hspace=0.5, bottom=0.1, top=0.95)
@@ -4104,7 +2449,3 @@ class EIS_sim:
         #Save Figure
         if savefig != 'none':
             fig.savefig(savefig) #saves figure if fix text is given
-
-#print()
-#print('---> PyEIS Core Loaded (v. 0.5.7 - 02/01/19)')
-#print()
