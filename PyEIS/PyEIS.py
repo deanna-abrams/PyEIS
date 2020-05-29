@@ -24,6 +24,7 @@ mpl.rc('xtick', labelsize=10)
 mpl.rc('ytick', labelsize=10)
 mpl.rc('legend', fontsize=10)
 
+
 # Frequency generator
 def freq_gen(f_start, f_stop, pts_decade=7):
     """
@@ -45,6 +46,7 @@ def freq_gen(f_start, f_stop, pts_decade=7):
                           num=int(np.around(pts_decade*f_decades)), endpoint=True)
     w_range = 2 * np.pi * f_range
     return f_range, w_range
+
 
 # Fitting Class
 class EIS_exp:
@@ -96,39 +98,9 @@ class EIS_exp:
         #currently need to append a cycle_number coloumn to gamry files
 
         # adds individual dataframes into one
-        if len(self.df_raw0) == 1:
-            self.df_raw = self.df_raw0[0]
-        elif len(self.df_raw0) == 2:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1]], axis=0)
-        elif len(self.df_raw0) == 3:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2]], axis=0)
-        elif len(self.df_raw0) == 4:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3]], axis=0)
-        elif len(self.df_raw0) == 5:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4]], axis=0)
-        elif len(self.df_raw0) == 6:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4], self.df_raw0[5]], axis=0)
-        elif len(self.df_raw0) == 7:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4], self.df_raw0[5], self.df_raw0[6]], axis=0)
-        elif len(self.df_raw0) == 8:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4], self.df_raw0[5], self.df_raw0[6], self.df_raw0[7]], axis=0)
-        elif len(self.df_raw0) == 9:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4], self.df_raw0[5], self.df_raw0[6], self.df_raw0[7], self.df_raw0[8]], axis=0)
-        elif len(self.df_raw0) == 10:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4], self.df_raw0[5], self.df_raw0[6], self.df_raw0[7], self.df_raw0[8], self.df_raw0[9]], axis=0)
-        elif len(self.df_raw0) == 11:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4], self.df_raw0[5], self.df_raw0[6], self.df_raw0[7], self.df_raw0[8], self.df_raw0[9], self.df_raw0[10]], axis=0)
-        elif len(self.df_raw0) == 12:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4], self.df_raw0[5], self.df_raw0[6], self.df_raw0[7], self.df_raw0[8], self.df_raw0[9], self.df_raw0[10], self.df_raw0[11]], axis=0)
-        elif len(self.df_raw0) == 13:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4], self.df_raw0[5], self.df_raw0[6], self.df_raw0[7], self.df_raw0[8], self.df_raw0[9], self.df_raw0[10], self.df_raw0[11], self.df_raw0[12]], axis=0)
-        elif len(self.df_raw0) == 14:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4], self.df_raw0[5], self.df_raw0[6], self.df_raw0[7], self.df_raw0[8], self.df_raw0[9], self.df_raw0[10], self.df_raw0[11]], self.df_raw0[12], self.df_raw0[13], axis=0)
-        elif len(self.df_raw0) == 15:
-            self.df_raw = pd.concat([self.df_raw0[0], self.df_raw0[1], self.df_raw0[2], self.df_raw0[3], self.df_raw0[4], self.df_raw0[5], self.df_raw0[6], self.df_raw0[7], self.df_raw0[8], self.df_raw0[9], self.df_raw0[10], self.df_raw0[11]], self.df_raw0[12], self.df_raw0[13], self.df_raw0[14], axis=0)
-        else:
-            print("Too many data files || 15 allowed")
-        self.df_raw = self.df_raw.assign(w = 2*np.pi*self.df_raw.f) #creats a new coloumn with the angular frequency
+        self.df_raw = pd.concat([df for df in self.df_raw0], axis=0)
+        # creates a new coloumn with the angular frequency
+        self.df_raw = self.df_raw.assign(w=2*np.pi*self.df_raw.f)
 
         #Masking data to each cycle
         self.df_pre = []
@@ -2158,7 +2130,6 @@ class EIS_exp:
     #     """
     #     self.Fit = minimize(leastsq_errorfunc_uelectrode, params, method='leastsq', args=(self.w, self.re, self.im, circuit, weight_func, E, alpha, n, C_ox, D_red, D_ox, r, theta_real_red, theta_real_ox, theta_imag_red, theta_imag_ox, F, R, T), nan_policy=nan_policy, maxfev=9999990)
     #     print(report_fit(self.Fit))
-    
 
     def plot_Cdl_E(self, interface, BET_Area, m_electrode):
         """
