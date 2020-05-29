@@ -283,17 +283,17 @@ def cir_LRsRQRQRQ_fit(params, w):
 
 
 #  L-R-Q(R)-Q(R-Q(R))-Q(R)
-def cir_LRQRQRQRQR(w, R, L,
+def cir_LRQRQRQRQR(w, Rs, L,
                    R1=None, Q1=None, n1=None, fs1=None,
                    R2=None, Q2=None, n2=None,
                    R3=None, Q3=None, n3=None, fs3=None,
                    R4=None, Q4=None, n4=None, fs4=None):
     mid_element = (1/elem_Q(w, Q2, n2) + 1/(R2 + cir_RQ(w, R3, Q3, n3, fs3)))**-1
-    return elem_L(w, L) + R + cir_RQ(w, R1, Q1, n1, fs1) + mid_element + cir_RQ(w, R4, Q4, n4, fs4)
+    return elem_L(w, L) + Rs + cir_RQ(w, R1, Q1, n1, fs1) + mid_element + cir_RQ(w, R4, Q4, n4, fs4)
 
 
 def cir_LRQRQRQRQR_fit(params, w):
-    return cir_LRQRQRQRQR(w, params['R'], params['L'],
+    return cir_LRQRQRQRQR(w, params['Rs'], params['L'],
                           R1=params.get('R1'), Q1=params.get('Q1'),
                           n1=params.get('n1'), fs1=params.get('fs1'),
                           R2=params.get('R2'), Q2=params.get('Q2'),

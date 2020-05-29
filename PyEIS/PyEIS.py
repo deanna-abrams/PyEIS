@@ -6,7 +6,7 @@ Created on Mon Mar  5 12:13:33 2018
 @author: Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
 """
 import pandas as pd
-from bokeh.layouts import layout
+from bokeh.layouts import layout, gridplot
 from bokeh.models import Range1d, LinearAxis, Legend, Div
 from bokeh.palettes import small_palettes
 from bokeh.plotting import figure
@@ -146,6 +146,12 @@ class EIS_exp:
                 self.df.append(self.df_limited[self.df_limited2.cycle_number == self.df_raw.cycle_number.unique()[i]])
         else:
             print('__init__ error (#2)')
+
+        # other attrs
+        self.fit = []
+        self.circuit_fit = []
+        self.init_fit = []
+        self.fit_reports = []
 
     def Lin_KK(self,
                num_RC='auto',
@@ -1761,7 +1767,7 @@ class EIS_exp:
             init_params = {p: self.fit[i].params[p].init_value for p in self.fit[i].params}
             self.init_fit.append(CIRCUIT_DICT[circuit](params=init_params, w=self.df[i].w))
 
-    def EIS_plot(self, fitting=False, legend='off', savefig='none'):
+    def EIS_plot(self, fitting=False, legend=False):
         """
         Plots Experimental and fitted impedance data in three subplots:
             a) Nyquist, b) Bode, c) relative residuals between experimental and fit
@@ -1771,15 +1777,19 @@ class EIS_exp:
         Optional Inputs
         -----------------
         - legend:
-          Legend options
-            - 'on' = illustrates the cycle number
-            - 'off' = off
-            - 'potential' = illustrates the potential
+            whether or not to show the legend
 
         - fitting:
           If EIS_fit() has been called. To plot experimental- and fitted data turn fitting on.
           Assumes only one data set!
         """
+        init_only = len(self.circuit_fit) == 0
+        if fitting and not init_only:
+            plot_width = 450
+            plot_height = 360
+        else:
+            plot_width = 620
+            plot_height = 500
 
         # Colors
         if len(self.df) == 1:
@@ -1793,34 +1803,34 @@ class EIS_exp:
             colors = small_palettes['Category20'][20]
             light_colors = colors[1::2]
             dark_colors = colors[::2]
+            fit_colors = []
             bode_color_left = 'black'
             bode_color_right = colors[14]
 
-        max_phase = np.max([np.max(df.Z_phase) for df in self.df])
-        min_phase = np.min([np.min(df.Z_phase) for df in self.df])
-
-        max_mag = np.max([np.max(np.log10(df.Z_mag)) for df in self.df])
-        min_mag = np.min([np.min(np.log10(df.Z_mag)) for df in self.df])
-
-        # nyquist + bode plots
-        plot_n = figure(plot_width=620, plot_height=500,
+        # nyquist + bode figure setup
+        plot_n = figure(plot_width=plot_width, plot_height=plot_height,
                         tooltips=[("x", "$x"), ("y", "$y")],
                         tools="pan,box_zoom,crosshair,hover,reset,save",
                         x_axis_label="Re(Z) [Ω]", y_axis_label="-Im(Z) [Ω]")
         plot_n.title.text = 'Nyquist'
         plot_n.title.align = 'center'
 
-        plot_b = figure(plot_width=620, plot_height=500,
+        plot_b = figure(plot_width=plot_width, plot_height=plot_height,
                         tooltips=[("x", "$x"), ("y", "$y")],
                         tools="pan,box_zoom,crosshair,hover,reset,save",
-                        x_axis_label="log(f) [Hz]", y_axis_label="log(|Z|) [Ω]"
-                        )
+                        x_axis_label="log(f) [Hz]", y_axis_label="log(|Z|) [Ω]")
         plot_b.title.text = 'Bode'
         plot_b.title.align = 'center'
 
+        max_phase = np.max([np.max(df.Z_phase) for df in self.df])
+        min_phase = np.min([np.min(df.Z_phase) for df in self.df])
+        max_mag = np.max([np.max(np.log10(df.Z_mag)) for df in self.df])
+        min_mag = np.min([np.min(np.log10(df.Z_mag)) for df in self.df])
+
         plot_b.y_range = Range1d(start=min_mag - 0.01, end=max_mag + 0.01)
-        plot_b.extra_y_ranges = {'phase_angle': Range1d(start=min_phase - 1, end=max_phase + 1)}
-        plot_b.add_layout(LinearAxis(y_range_name="phase_angle", axis_label="Z phase [deg]"), 'right')
+        plot_b.extra_y_ranges = {'y2': Range1d(start=min_phase - 1, end=max_phase + 1)}
+        plot_b.add_layout(LinearAxis(y_range_name="y2", axis_label="Z phase [deg]"), 'right')
+
         plot_b.yaxis[0].axis_line_color = bode_color_left
         plot_b.yaxis[0].major_label_text_color = bode_color_left
         plot_b.yaxis[0].major_tick_line_color = bode_color_left
@@ -1833,365 +1843,114 @@ class EIS_exp:
         plot_b.yaxis[1].minor_tick_line_color = bode_color_right
         plot_b.yaxis[1].axis_label_text_color = bode_color_right
 
-        legend_n = []
-        legend_b = []
-        for i in range(len(self.df)):
-            n0 = plot_n.scatter(self.df[i].re, self.df[i].im,
-                                color=dark_colors[i])
+        if fitting and not init_only:
+            # nyquist
+            plot_n_resid = figure(plot_width=plot_width, plot_height=100,
+                                  x_range=plot_n.x_range,  x_axis_label="Re(Z) [Ω]")
+            plot_n.xaxis.visible = False
+            plot_n.min_border_bottom = 0
+            plot_n_resid.ray(x=[np.mean(self.df[0].re)], y=[0], length=0, angle=0, color='black')
+            plot_n_resid.ray(x=[np.mean(self.df[0].re)], y=[0], length=0, angle=np.pi, color='black')
 
-            b0 = plot_b.scatter(np.log10(self.df[i].f), np.log10(self.df[i].Z_mag),
-                                color=dark_colors[i])
-            b1 = plot_b.scatter(np.log10(self.df[i].f), self.df[i].Z_phase,
-                                y_range_name='phase_angle', color=light_colors[i])
+            # bode
+            plot_b_resid = figure(plot_width=plot_width, plot_height=100,
+                                  x_range=plot_b.x_range, x_axis_label="log(f) [Hz]")
+            plot_b.xaxis.visible = False
+            plot_b.min_border_bottom = 0
+            plot_b_resid.ray(x=[np.mean(np.log10(self.df[0].f))], y=[0], length=0, angle=0, color='black')
+            plot_b_resid.ray(x=[np.mean(np.log10(self.df[0].f))], y=[0], length=0, angle=np.pi, color='black')
+
+            magnitude_0 = np.abs(self.circuit_fit[0].values)
+            phase_0 = np.angle(self.circuit_fit[0].values, deg=True)
+            resid_mag_0 = np.log10(magnitude_0) - np.log10(self.df[0].Z_mag)
+            resid_phase_0 = phase_0 - self.df[0].Z_phase
+
+            plot_b_resid.y_range = Range1d(start=np.min(resid_mag_0) - 0.002,
+                                           end=np.max(resid_mag_0) + 0.002)
+            plot_b_resid.extra_y_ranges = {'y2': Range1d(start=np.min(resid_phase_0) - .15,
+                                                         end=np.max(resid_phase_0) + .15)}
+            plot_b_resid.add_layout(LinearAxis(y_range_name="y2"), 'right')
+
+            plot_b_resid.yaxis[0].axis_line_color = bode_color_left
+            plot_b_resid.yaxis[0].major_label_text_color = bode_color_left
+            plot_b_resid.yaxis[0].major_tick_line_color = bode_color_left
+            plot_b_resid.yaxis[0].minor_tick_line_color = bode_color_left
+            plot_b_resid.yaxis[0].axis_label_text_color = bode_color_left
+
+            plot_b_resid.yaxis[1].axis_line_color = bode_color_right
+            plot_b_resid.yaxis[1].major_label_text_color = bode_color_right
+            plot_b_resid.yaxis[1].major_tick_line_color = bode_color_right
+            plot_b_resid.yaxis[1].minor_tick_line_color = bode_color_right
+            plot_b_resid.yaxis[1].axis_label_text_color = bode_color_right
+
+        for i in range(len(self.df)):
+            plot_n.scatter(self.df[i].re, self.df[i].im, color=dark_colors[i], legend_label="Data")
+
+            plot_b.scatter(np.log10(self.df[i].f), np.log10(self.df[i].Z_mag),
+                           color=dark_colors[i], legend_label="Data ")
+            plot_b.scatter(np.log10(self.df[i].f), self.df[i].Z_phase,
+                           y_range_name='y2', color=light_colors[i], legend_label="Data")
 
             if fitting:
-                # fit
-                if len(self.circuit_fit) != 0:
-                    n1 = plot_n.line(self.circuit_fit[i].values.real, -self.circuit_fit[i].values.imag,
-                                     color=fit_colors[0])
+                if not init_only:
+                    # fit
+                    plot_n.line(self.circuit_fit[i].values.real, -self.circuit_fit[i].values.imag,
+                                     color=fit_colors[0], legend_label='Fit')
                     magnitude = np.abs(self.circuit_fit[i].values)
                     phase = np.angle(self.circuit_fit[i].values, deg=True)
-                    b2 = plot_b.line(np.log10(self.df[i].f), np.log10(magnitude), color=fit_colors[1])
-                    b3 = plot_b.line(np.log10(self.df[i].f), phase, color=fit_colors[2], y_range_name="phase_angle")
+                    plot_b.line(np.log10(self.df[i].f), np.log10(magnitude),
+                                color=fit_colors[1], legend_label="Fit ")
+                    plot_b.line(np.log10(self.df[i].f), phase, color=fit_colors[2],
+                                y_range_name="y2", legend_label='Fit')
+                    # residuals
+                    plot_n_resid.scatter(self.circuit_fit[i].values.real,
+                                         -self.circuit_fit[i].values.imag - self.df[i].im,
+                                         color=dark_colors[i])
+
+                    plot_b_resid.scatter(np.log10(self.df[i].f),
+                                         np.log10(magnitude) - np.log10(self.df[i].Z_mag),
+                                         color=dark_colors[i])
+                    plot_b_resid.scatter(np.log10(self.df[i].f), phase - self.df[i].Z_phase,
+                                         color=light_colors[i], y_range_name='y2')
 
                 # initial guess
-                n2 = plot_n.line(self.init_fit[i].values.real, -self.init_fit[i].values.imag,
-                                 color='black', line_dash='dashed')
+                plot_n.line(self.init_fit[i].values.real, -self.init_fit[i].values.imag,
+                            color='black', line_dash='dashed', legend_label="Init")
                 magnitude_init = np.abs(self.init_fit[i].values)
                 phase_init = np.angle(self.init_fit[i].values, deg=True)
-                b4 = plot_b.line(np.log10(self.df[i].f), np.log10(magnitude_init),
-                                 color=fit_colors[1], line_dash='dashed')
-                b5 = plot_b.line(np.log10(self.df[i].f), phase_init,
-                                 color=fit_colors[2], y_range_name="phase_angle", line_dash='dashed')
+                plot_b.line(np.log10(self.df[i].f), np.log10(magnitude_init),
+                            color=fit_colors[1], line_dash='dashed', legend_label="Init ")
+                plot_b.line(np.log10(self.df[i].f), phase_init,
+                            color=fit_colors[2], y_range_name="y2",
+                            line_dash='dashed', legend_label="Init")
 
-                # b2 = plot_b.line()
-            #     if legend == 'potential':
-            #         fit_label = str(np.round(np.average(self.df[i].E_avg), 2)) + ' V'
-            #     elif legend == 'on':
-            #         fit_label = f'{i+1}'
-            #     else:
-            #         continue
-            #
-            #     legend_n.append((fit_label, [n1]))
-            #     # legend_b.append((fit_label, [b0, b1]))
-            #
-        #     if legend == 'potential':
-        #         data_label = str(np.round(np.average(self.df[i].E_avg), 2)) + ' V Data'
-        #     elif legend == 'single':
-        #         data_label = 'Data'
-        #         fit_label = 'Fit'
-        #         init_label = 'Init'
-        #     else:
-        #         continue
-        #     if fitting:
-        #         legend_n.extend([(self_label, [n0]), (fit_label, [n1]), (init_label, [n2])])
-        #         legend_b.extend([(self_label, [b0, b1])])
-
-        plot_n.add_layout(Legend(items=legend_n, location="bottom_right"))
-        plot_b.add_layout(Legend(items=legend_b, location="top_right"))
+        if legend:
+            plot_n.legend.location = 'bottom_right'
+            plot_n.legend.click_policy = 'hide'
+            plot_b.legend.location = 'center_left'
+            plot_b.legend.click_policy = 'hide'
+        else:
+            plot_n.legend.visible = False
+            plot_b.legend.visible = False
 
         if fitting:
-            fr = Div(text=f'<pre>{self.fit_reports[0]}</pre>'.replace('\n', "<br />"), width=400, render_as_text=False)
-            l = layout([[plot_n, plot_b], [fr]], sizing_mode='scale_both')
+            if not init_only:
+                plot_n_resid.yaxis[0].ticker.desired_num_ticks = 3
+                nyquist = gridplot([[plot_n], [plot_n_resid]], toolbar_location='right')
+
+                plot_b_resid.yaxis[0].ticker.desired_num_ticks = 3
+                plot_b_resid.yaxis[1].ticker.desired_num_ticks = 3
+                bode = gridplot([[plot_b], [plot_b_resid]], toolbar_location='right')
+            else:
+                nyquist = plot_n
+                bode = plot_b
+            report = self.fit_reports[0].split("[[Correlations]]")[0]
+            fr = Div(text=f'<pre>{report}</pre>'.replace('\n', "<br />"), width=400)
+            l = layout([[nyquist, bode], [fr]], sizing_mode='scale_width')
         else:
             l = layout(plot_n, plot_b)
         return l
 
-        # for i in range(len(self.df)):
-        #     ax.plot(self.df[i].re, self.df[i].im, marker='x', color=light_colors[i], ls='',
-        #             label=self.label_cycleno[i])
-        #     if fitting == 'on':
-        #         ax.plot(self.circuit_fit[i].values.real, -self.circuit_fit[i].values.imag,
-        #                 color=dark_colors[i], ls='--')
-
-
-
-
-        # ##Nyquist Plot
-        # for i in range(len(self.df)):
-        #     ax.plot(self.df[i].re, self.df[i].im, marker='x', color=light_colors[i], ls='',
-        #             label=self.label_cycleno[i])
-        #     if fitting == 'on':
-        #         ax.plot(self.circuit_fit[i].values.real, -self.circuit_fit[i].values.imag,
-        #                 color=dark_colors[i], ls='--')
-
-        # Bode Plot
-        # if bode == 'on':
-        #     for i in range(len(self.df)):
-        #         ax1.plot(np.log10(self.df[i].f), self.df[i].re, color=light_colors[i],
-        #                  marker='D', ms=3, ls='', label=self.label_re_1[i])
-        #         ax1.plot(np.log10(self.df[i].f), self.df[i].im, color=light_colors[i+1],
-        #                  marker='s', ms=3, ls='', label=self.label_im_1[i])
-        #         if fitting == 'on':
-        #             ax1.plot(np.log10(self.df[i].f), self.circuit_fit[i].values.real,
-        #                      color=dark_colors[i], ls='--')
-        #             ax1.plot(np.log10(self.df[i].f), -self.circuit_fit[i].values.imag,
-        #                      color=dark_colors[i+1], ls='--')
-        #         ax1.set_xlabel("log(f) [Hz]")
-        #         ax1.set_ylabel("Z', -Z'' [$\Omega$]")
-        #         if legend in ['on', 'potential', 'basic']:
-        #             ax1.legend(loc='best',  frameon=False)
-        #
-        # elif bode == 're':
-        #     for i in range(len(self.df)):
-        #         ax1.plot(np.log10(self.df[i].f), self.df[i].re, color=light_colors[i],
-        #                  marker='D', ms=3, ls='', label=self.label_cycleno[i])
-        #         if fitting == 'on':
-        #             ax1.plot(np.log10(self.df[i].f), self.circuit_fit[i].values.real,
-        #                      color=dark_colors[i], ls='--')
-        #         ax1.set_xlabel("log(f) [Hz]")
-        #         ax1.set_ylabel("Z' [$\Omega$]")
-        #         if legend in ['on', 'potential', 'basic']:
-        #             ax1.legend(loc='best',  frameon=False)
-        #
-        # elif bode == 'log_re':
-        #     for i in range(len(self.df)):
-        #         ax1.plot(np.log10(self.df[i].f), np.log10(self.df[i].re),
-        #                  color=light_colors[i], marker='D', ms=3, ls='',
-        #                  label=self.label_cycleno[i])
-        #         if fitting == 'on':
-        #             ax1.plot(np.log10(self.df[i].f), np.log10(self.circuit_fit[i].values.real),
-        #                      color=dark_colors[i], ls='--')
-        #         ax1.set_xlabel("log(f) [Hz]")
-        #         ax1.set_ylabel("log(Z') [$\Omega$]")
-        #         if legend in ['on', 'potential', 'basic']:
-        #             ax1.legend(loc='best',  frameon=False)
-        #
-        # elif bode=='im':
-        #     for i in range(len(self.df)):
-        #         ax1.plot(np.log10(self.df[i].f), self.df[i].im, color=light_colors[i],
-        #                  marker='s', ms=3, ls='', label=self.label_cycleno[i])
-        #         if fitting == 'on':
-        #             ax1.plot(np.log10(self.df[i].f), -self.circuit_fit[i].values.imag,
-        #                      color=dark_colors[i], ls='--')
-        #         ax1.set_xlabel("log(f) [Hz]")
-        #         ax1.set_ylabel("-Z'' [$\Omega$]")
-        #         if legend in ['on', 'potential', 'basic']:
-        #             ax1.legend(loc='best',  frameon=False)
-        #
-        # elif bode=='log_im':
-        #     for i in range(len(self.df)):
-        #         ax1.plot(np.log10(self.df[i].f), np.log10(self.df[i].im), color=light_colors[i],
-        #                  marker='s', ms=3, ls='', label=self.label_cycleno[i])
-        #         if fitting == 'on':
-        #             ax1.plot(np.log10(self.df[i].f), np.log10(-self.circuit_fit[i].values.imag),
-        #                      color=dark_colors[i], ls='--')
-        #         ax1.set_xlabel("log(f) [Hz]")
-        #         ax1.set_ylabel("log(-Z'') [$\Omega$]")
-        #         if legend in ['on', 'potential', 'basic']:
-        #             ax1.legend(loc='best',  frameon=False)
-        #
-        # elif bode == 'log':
-        #     for i in range(len(self.df)):
-        #         ax1.plot(np.log10(self.df[i].f), np.log10(self.df[i].re), color=light_colors[i],
-        #                  marker='D', ms=3, ls='', label=self.label_re_1[i])
-        #         ax1.plot(np.log10(self.df[i].f), np.log10(self.df[i].im), color=light_colors[i+1],
-        #                  marker='s', ms=3, ls='', label=self.label_im_1[i])
-        #         if fitting == 'on':
-        #             ax1.plot(np.log10(self.df[i].f), np.log10(self.circuit_fit[i].values.real),
-        #                      color=dark_colors[i], ls='--')
-        #             ax1.plot(np.log10(self.df[i].f), np.log10(-self.circuit_fit[i].values.imag),
-        #                      color=dark_colors[i+1], ls='--')
-        #         ax1.set_xlabel("log(f) [Hz]")
-        #         ax1.set_ylabel("log(Z', -Z'') [$\Omega$]")
-        #         if legend in ['on', 'potential', 'basic']:
-        #             ax1.legend(loc='best',  frameon=False)
-
-        ### Relative Residuals on Fit
-        # if rr == 'on':
-        #     if fitting == 'off':
-        #         print('Fitting has not been performed, thus the relative residuals cannot be '
-        #               'determined')
-        #     elif fitting == 'on':
-        #         self.rr_real = []
-        #         self.rr_imag = []
-        #         for i in range(len(self.df)):
-        #             self.rr_real.append(residual_real(re=self.df[i].re.values,
-        #                                               fit_re=self.circuit_fit[i].values.real,
-        #                                               fit_im=-self.circuit_fit[i].values.imag))
-        #             self.rr_imag.append(residual_imag(im=self.df[i].im.values,
-        #                                               fit_re=self.circuit_fit[i].values.real,
-        #                                               fit_im=-self.circuit_fit[i].values.imag))
-        #             real_label = "$\Delta$Z' "
-        #             imag_label = "$\Delta$-Z'' "
-        #             if legend == 'on':
-        #                 real_label += '#'+str(i+1)
-        #                 imag_label += '#'+str(i+1)
-        #             elif legend == 'potential':
-        #                 real_label += str(np.round(np.average(self.df[i].E_avg.values), 2))+' V'
-        #                 imag_label += str(np.round(np.average(self.df[i].E_avg.values), 2))+' V'
-        #
-        #
-        #             ax2.plot(np.log10(self.df[i].f), self.rr_real[i]*100, color=light_colors[i],
-        #                      marker='D', ms=6, ls='', label=real_label)
-        #             ax2.plot(np.log10(self.df[i].f), self.rr_imag[i]*100, color=light_colors[i+1],
-        #                      marker='s', ms=6, ls='', label=imag_label)
-        #
-        #             ax2.axhline(0, ls='--', c='k', alpha=.5)
-        #             ax2.set_xlabel("log(f) [Hz]")
-        #             ax2.set_ylabel("$\Delta$Z', $\Delta$-Z'' [%]")
-        #
-        #         # Automatic y-limits limits
-        #         self.rr_im_min = []
-        #         self.rr_im_max = []
-        #         self.rr_re_min = []
-        #         # needs to be within a loop if cycles have different number of data points
-        #         for j in range(len(self.df)):
-        #             self.rr_im_min = np.min(self.rr_imag[j])
-        #             self.rr_im_max = np.max(self.rr_imag[j])
-        #             self.rr_re_min = np.min(self.rr_real[j])
-        #             self.rr_re_max = np.max(self.rr_real[j])
-        #         if self.rr_re_max > self.rr_im_max:
-        #             self.rr_ymax = self.rr_re_max
-        #         else:
-        #             self.rr_ymax = self.rr_im_max
-        #         if self.rr_re_min < self.rr_im_min:
-        #             self.rr_ymin = self.rr_re_min
-        #         else:
-        #             self.rr_ymin  = self.rr_im_min
-        #         if np.abs(self.rr_ymin) > np.abs(self.rr_ymax):
-        #             ax2.set_ylim(self.rr_ymin *100*1.5, np.abs(self.rr_ymin)*100*1.5)
-        #
-        #         elif np.abs(self.rr_ymin) < np.abs(self.rr_ymax):
-        #             ax2.set_ylim(np.negative(self.rr_ymax)*100*1.5, np.abs(self.rr_ymax)*100*1.5)
-        #
-        #         if legend in ['on', 'potential', 'basic']:
-        #             ax2.legend(loc='best',  frameon=False)
-        #
-        # # Figure specifics
-        # if legend in ['on', 'potential', 'basic']:
-        #     ax.legend(loc='best',  frameon=False)
-        # ax.set_xlabel("Z' [$\Omega$]")
-        # ax.set_ylabel("-Z'' [$\Omega$]")
-        # if nyq_xlim != 'none':
-        #     ax.set_xlim(nyq_xlim[0], nyq_xlim[1])
-        # if nyq_ylim != 'none':
-        #     ax.set_ylim(nyq_ylim[0], nyq_ylim[1])
-        #
-        # # Save Figure
-        # if savefig != 'none':
-        #     fig.savefig(savefig) #saves figure if fix text is given
-
-    # def Fit_uelectrode(self, params, circuit, D_ox, r, theta_real_red, theta_imag_red, n, T, F, R, Q='none', weight_func='modulus', nan_policy='raise'):
-    #     """
-    #     Fit the reductive microdisk electrode impedance repsonse following either BV or MHC infinite kientics
-    #
-    #     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    #     """
-    #     self.Fit = []
-    #     self.circuit_fit = []
-    #
-    #     for i in range(len(self.df)):
-    #         self.Fit.append(minimize(leastsq_errorfunc_uelectrode, params, method='leastsq', args=(self.df[i].w, self.df[i].re, self.df[i].im, circuit, weight_func, np.average(self.df[i].E_avg), D_ox, r, theta_real_red, theta_imag_red, n, T, F, R), nan_policy=nan_policy, maxfev=9999990))
-    #         print(report_fit(self.Fit[i]))
-    #
-    #         if circuit == 'R-(Q(RM)),BV_red':
-    #             if "'fs'" in str(self.Fit[i].params.keys()):
-    #                 self.circuit_fit.append(cir_Rs_QRM_BV_red(w=self.df[i].w, E=np.average(self.df[i].E_avg), E0=self.Fit[i].params.get('E0').value, Rs=self.Fit[i].params.get('Rs').value, fs=self.Fit[i].params.get('fs').value, n_Q=self.Fit[i].params.get('n_Q').value, Q='none', Rct=self.Fit[i].params.get('Rct').value, alpha=self.Fit[i].params.get('alpha').value, C_ox=self.Fit[i].params.get('C_ox').value, D_ox=D_ox, r=r, theta_real_red=theta_real_red, theta_imag_red=theta_imag_red, n=n, T=T, F=F, R=R))
-    #             elif "'Q'" in str(self.Fit[i].params.keys()):
-    #                 self.circuit_fit.append(cir_Rs_QRM_BV_red(w=self.df[i].w, E=np.average(self.df[i].E_avg), E0=self.Fit[i].params.get('E0').value, Rs=self.Fit[i].params.get('Rs').value, fs='none', n_Q=self.Fit[i].params.get('n_Q').value, Q=self.Fit[i].params.get('Q').value, Rct=self.Fit[i].params.get('Rct').value, alpha=self.Fit[i].params.get('alpha').value, C_ox=self.Fit[i].params.get('C_ox').value, D_ox=D_ox, r=r, theta_real_red=theta_real_red, theta_imag_red=theta_imag_red, n=n, T=T, F=F, R=R))
-
-
-    # def uelectrode(self, params, circuit, E, alpha, n, C_ox, D_red, D_ox, r, theta_real_red, theta_real_ox, theta_imag_red, theta_imag_ox, F, R, T, weight_func='modulus', nan_policy='raise'):
-    #     """
-    #     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    #
-    #     Inputs
-    #     ------------
-    #     - Rs = Series resistance [ohm]
-    #     - Q = constant phase element [s/ohm]
-    #     - n_Q = exponent of Q
-    #     - Rct = Charge transfer resistance [ohm]
-    #     - C_ox = concentration of oxidized specie [mol/cm3]
-    #
-    #     - circuit:
-    #         - 'R-(Q(RM))'
-    #         - 'R-RQ-(Q(RM))'
-    #
-    #     - weight_func = Weight function, Three options:
-    #         - modulus (default)
-    #         - unity
-    #         - proportional
-    #
-    #     - nan_policy = if issues occur with this fitting due to nan values 'propagate' should be used. otherwise, 'raise' is default
-    #
-    #     Returns
-    #     ------------
-    #     Returns the fitted impedance spectra(s) but also the fitted parameters that were used in the initial guesses. To call these use e.g. self.fit_Rs
-    #     """
-    #     self.Fit = []
-    #     self.circuit_fit = []
-    #     self.fit_Rs = []
-    #     self.fit_Q = []
-    #     self.fit_fs = []
-    #     self.fit_n_Q = []
-    #     self.fit_Rct = []
-    #     self.fit_E0 = []
-    #     self.fit_Cred = []
-    #
-    #     for i in range(len(self.df)):
-    #         self.Fit.append(minimize(leastsq_errorfunc_uelectrode, params, method='leastsq', args=(self.df[i].w, self.df[i].re, self.df[i].im, circuit, weight_func, E, alpha, n, C_ox, D_red, D_ox, r, theta_real_red, theta_real_ox, theta_imag_red, theta_imag_ox, F, R, T), nan_policy=nan_policy, maxfev=9999990))
-    #         print(report_fit(self.Fit[i]))
-    #         if circuit == 'R-(Q(RM))':
-    #             if "'fs'" in str(self.Fit[i].params.keys()):
-    #                 self.circuit_fit.append(cir_Rs_QRM(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, fs=self.Fit[i].params.get('fs').value, Q='none', n_Q=self.Fit[i].params.get('n_Q').value, Rct=self.Fit[i].params.get('Rct').value, E=E, E0=self.Fit[i].params.get('E0').value, alpha=alpha, n=n, C_red=self.Fit[i].params.get('C_red').value, C_ox=C_ox, D_red=D_red, D_ox=D_ox, r=r, theta_real_red=theta_real_red, theta_real_ox=theta_real_ox, theta_imag_red=theta_imag_red, theta_imag_ox=theta_imag_ox, T=T, F=F, R=R))
-    #                 self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-    #                 self.fit_fs.append(self.Fit[i].params.get('fs').value)
-    #                 self.fit_n_Q.append(self.Fit[i].params.get('n_Q').value)
-    #                 self.fit_Rct.append(self.Fit[i].params.get('Rct').value)
-    #                 self.fit_E0.append(self.Fit[i].params.get('E0').value)
-    #                 self.fit_Cred.append(self.Fit[i].params.get('C_red').value)
-    #             elif "'Q'" in str(self.Fit[i].params.keys()):
-    #                 self.circuit_fit.append(cir_Rs_QRM(w=self.df[i].w, Rs=self.Fit[i].params.get('Rs').value, Q=self.Fit[i].params.get('Q').value, fs='none', n_Q=self.Fit[i].params.get('n_Q').value, Rct=self.Fit[i].params.get('Rct').value, E=E, E0=self.Fit[i].params.get('E0').value, alpha=alpha, n=n, C_red=self.Fit[i].params.get('C_red').value, C_ox=C_ox, D_red=D_red, D_ox=D_ox, r=r, theta_real_red=theta_real_red, theta_real_ox=theta_real_ox, theta_imag_red=theta_imag_red, theta_imag_ox=theta_imag_ox, T=T, F=F, R=R))
-    #                 self.fit_Rs.append(self.Fit[i].params.get('Rs').value)
-    #                 self.fit_Q.append(self.Fit[i].params.get('Q').value)
-    #                 self.fit_n_Q.append(self.Fit[i].params.get('n_Q').value)
-    #                 self.fit_Rct.append(self.Fit[i].params.get('Rct').value)
-    #                 self.fit_E0.append(self.Fit[i].params.get('E0').value)
-    #                 self.fit_Cred.append(self.Fit[i].params.get('C_red').value)
-
-    # def uelectrode_sim_fit(self, params, circuit, E, alpha, n, C_ox, D_red, D_ox, r, theta_real_red, theta_real_ox, theta_imag_red, theta_imag_ox, F, R, T, weight_func='modulus', nan_policy='raise'):
-    #     """
-    #     In development..
-    #
-    #     Kristian B. Knudsen (kknu@berkeley.edu / kristianbknudsen@gmail.com)
-    #
-    #     Inputs
-    #     ------------
-    #     - weight_func = Weight function, Three options:
-    #         - modulus (default)
-    #         - unity
-    #         - proportional
-    #
-    #     - nan_policy = if issues occur with this fitting due to nan values 'propagate' should be used. otherwise, 'raise' is default
-    #
-    #     - nyq_xlim/nyq_xlim: x/y-axis on nyquist plot, if not equal to 'none' state [min,max] value
-    #
-    #     - legend: Display legend
-    #         Turn 'on', 'off'
-    #
-    #     - bode = Plots Bode Plot - options:
-    #         'on' = re, im vs. log(freq)
-    #         'log' = log(re, im) vs. log(freq)
-    #
-    #         're' = re vs. log(freq)
-    #         'log_re' = log(re) vs. log(freq)
-    #
-    #         'im' = im vs. log(freq)
-    #         'log_im' = log(im) vs. log(freq)
-    #
-    #     - fitting: if EIS_exp_fit() has been called. Plotting exp and fits by = 'on'
-    #         Turn 'on', 'off'
-    #
-    #     - rr: relative residuals. Gives relative residuals of fit from experimental data.
-    #         Turn 'on', 'off'
-    #
-    #     Returns
-    #     ------------
-    #     The fitted impedance spectra(s) but also the fitted parameters that were used in the initial guesses. To call these use e.g. self.fit_Rs
-    #     """
-    #     self.Fit = minimize(leastsq_errorfunc_uelectrode, params, method='leastsq', args=(self.w, self.re, self.im, circuit, weight_func, E, alpha, n, C_ox, D_red, D_ox, r, theta_real_red, theta_real_ox, theta_imag_red, theta_imag_ox, F, R, T), nan_policy=nan_policy, maxfev=9999990)
-    #     print(report_fit(self.Fit))
 
     def plot_Cdl_E(self, interface, BET_Area, m_electrode):
         """
@@ -2212,7 +1971,8 @@ class EIS_exp:
 
         Inputs
         ---------
-        C_eff/C_dl = Normalized Double-layer capacitance measured from impedance [uF/cm2] (normalized by norm_nonFara_Q_C() or norm_Fara_Q_C())
+        C_eff/C_dl = Normalized Double-layer capacitance measured from impedance [uF/cm2]
+        (normalized by norm_nonFara_Q_C() or norm_Fara_Q_C())
         """
         fig = figure(dpi=120, facecolor='w', edgecolor='w')
         fig.subplots_adjust(left=0.1, right=0.95, hspace=0.5, bottom=0.1, top=0.95)
@@ -2223,14 +1983,19 @@ class EIS_exp:
         if interface == 'nonfaradaic':
             self.Q_norm = []
             for i in range(len(self.df)):
-                #self.Q_norm.append(norm_nonFara_Q_C(Rs=self.Fit[i].params.get('Rs').value, Q=self.Fit[i].params.get('Q').value, n=self.Fit[i].params.get('n').value, L=self.Fit[i].params.get('L').value) )
-                self.Q_norm.append(norm_nonFara_Q_C(Rs=self.fit[i].params.get('Rs').value, Q=self.fit[i].params.get('Q').value, n=self.fit[i].params.get('n').value))
+                self.Q_norm.append(norm_nonFara_Q_C(Rs=self.fit[i].params.get('Rs').value,
+                                                    Q=self.fit[i].params.get('Q').value,
+                                                    n=self.fit[i].params.get('n').value))
                 self.E.append(np.average(self.df[i].E_avg))
 
         elif interface == 'faradaic':
             self.Q_norm = []
             for j in range(len(self.df)):
-                self.Q_norm.append(norm_Fara_Q_C(Rs=self.fit[j].params.get('Rs').value, Rct=self.fit[j].params.get('R').value, n=self.fit[j].params.get('n').value, fs=self.fit[j].params.get('fs').value, L=self.fit[j].params.get('L').value))
+                self.Q_norm.append(norm_Fara_Q_C(Rs=self.fit[j].params.get('Rs').value,
+                                                 Rct=self.fit[j].params.get('R').value,
+                                                 n=self.fit[j].params.get('n').value,
+                                                 fs=self.fit[j].params.get('fs').value,
+                                                 L=self.fit[j].params.get('L').value))
                 self.E.append(np.average(self.df[j].E_avg))
 
         self.C_norm = (np.array(self.Q_norm)/(m_electrode*BET_Area))*10**6 #'uF/cm2'
