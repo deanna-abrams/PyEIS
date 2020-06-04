@@ -1951,7 +1951,6 @@ class EIS_exp:
             l = layout(plot_n, plot_b)
         return l
 
-
     def plot_Cdl_E(self, interface, BET_Area, m_electrode):
         """
         Normalizing Q to C_eff or Cdl using either norm_nonFara_Q_C() or norm_Fara_Q_C()
